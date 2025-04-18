@@ -5,6 +5,7 @@ mod db;
 mod ui;
 
 use iced::{executor, Application, Command, Element, Settings, Theme};
+use iced::window::{Level, PlatformSpecific};
 use crate::ui::BookshelfApp;
 
 fn main() -> iced::Result {
@@ -20,11 +21,11 @@ fn main() -> iced::Result {
             resizable: true,
             decorations: true,
             transparent: false,
-            always_on_top: false,
             icon: None,
+            level: Level::Normal,
+            platform_specific: PlatformSpecific::default(),
         },
-        default_font: None,
-        default_text_size: 16,
+        default_text_size: 16.0,
         antialiasing: true,
         exit_on_close_request: true,
         ..Settings::default()

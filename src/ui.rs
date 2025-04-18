@@ -1,4 +1,3 @@
-
 // src/ui.rs
 use crate::db;
 use crate::models::{AuthorModel, BookModel, BookWithAuthor, NewAuthor, NewBook};
@@ -44,7 +43,7 @@ pub enum Message {
     BookPriceChanged(String),
     BookBoughtDateChanged(String),
     BookFinishedDateChanged(String),
-    BookAuthorSelected(Option<AuthorModel>),
+    BookAuthorSelected(AuthorModel),
     SaveBook,
     BookSaved(Result<BookModel, String>),
     DeleteBook(i32),
@@ -135,7 +134,7 @@ impl Application for BookshelfApp {
             }
 
             Message::TabSelected(tab) => {
-                self.current_tab = tab;
+                self.current_tab = tab.clone();
                 self.mode = Mode::View;
 
                 match tab {
@@ -216,7 +215,7 @@ impl Application for BookshelfApp {
             }
 
             Message::BookAuthorSelected(author) => {
-                self.selected_author = author;
+                self.selected_author = Some(author);
             }
 
             Message::SaveBook => {
@@ -247,20 +246,25 @@ impl Application for BookshelfApp {
                 let finished_date = parse_datetime(&self.book_finished_date);
 
                 let now = Local::now().naive_local();
+                let added_date = self.current_book.as_ref().and_then(|b| b.book.added).unwrap_or(now);
+
+                // Extract book_id outside the closure if we're in edit mode
+                let book_id = self.current_book.as_ref().map(|book| book.book.id);
 
                 let new_book = NewBook {
                     title: self.book_title.clone(),
                     price,
                     bought: bought_date,
                     finished: finished_date,
-                    added: Some(self.current_book.as_ref().and_then(|b| b.book.added).unwrap_or(now)),
+                    added: Some(added_date),
                     AuthorFK: self.selected_author.as_ref().map(|a| a.Id),
                 };
 
                 return Command::perform(
                     async move {
-                        if let Some(book) = self.current_book.as_ref() {
-                            match db::update_book(book.book.id, &new_book) {
+                        // Use book_id that we extracted before the closure
+                        if let Some(id) = book_id {
+                            match db::update_book(id, &new_book) {
                                 Ok(updated) => Ok(updated),
                                 Err(e) => Err(e.to_string()),
                             }
@@ -358,10 +362,14 @@ impl Application for BookshelfApp {
                     Name: Some(self.author_name.clone()),
                 };
 
+                // Extract author_id outside the closure if we're in edit mode
+                let author_id = self.current_author.as_ref().map(|author| author.Id);
+
                 return Command::perform(
                     async move {
-                        if let Some(author) = self.current_author.as_ref() {
-                            match db::update_author(author.Id, &new_author) {
+                        // Use author_id that we extracted before the closure
+                        if let Some(id) = author_id {
+                            match db::update_author(id, &new_author) {
                                 Ok(updated) => Ok(updated),
                                 Err(e) => Err(e.to_string()),
                             }
@@ -508,9 +516,13 @@ impl BookshelfApp {
                 };
 
                 column![
-                    row![text("Books").size(24), add_button]
-                        .padding(10)
-                        .width(Length::Fill),
+                    row![
+                        text("Books").size(24),
+                        iced::widget::horizontal_space(Length::Fill),
+                        add_button
+                    ]
+                    .padding(10)
+                    .width(Length::Fill),
                     scrollable(
                         container(book_list)
                             .padding(10)
@@ -614,62 +626,67 @@ impl BookshelfApp {
                         ]
                         .spacing(10)
                         .align_items(iced::Alignment::Center);
+
                         col = col.push(author_row);
-                                            }
+                    }
 
-                                            col
-                                        };
+                    col
+                };
 
-                                        column![
-                                            row![text("Authors").size(24), add_button]
-                                                .padding(10)
-                                                .width(Length::Fill),
-                                            scrollable(
-                                                container(author_list)
-                                                    .padding(10)
-                                                    .width(Length::Fill)
-                                            ).height(Length::Fill)
-                                        ]
-                                        .spacing(20)
-                                        .padding(20)
-                                        .into()
-                                    }
+                column![
+                    row![
+                        text("Authors").size(24),
+                        iced::widget::horizontal_space(Length::Fill),
+                        add_button
+                    ]
+                    .padding(10)
+                    .width(Length::Fill),
+                    scrollable(
+                        container(author_list)
+                            .padding(10)
+                            .width(Length::Fill)
+                    ).height(Length::Fill)
+                ]
+                .spacing(20)
+                .padding(20)
+                .into()
+            }
 
-                                    Mode::Add | Mode::Edit => {
-                                        let title = match self.mode {
-                                            Mode::Add => "Add New Author",
-                                            Mode::Edit => "Edit Author",
-                                            _ => unreachable!(),
-                                        };
+            Mode::Add | Mode::Edit => {
+                let title = match self.mode {
+                    Mode::Add => "Add New Author",
+                    Mode::Edit => "Edit Author",
+                    _ => unreachable!(),
+                };
 
-                                        let form = column![
-                                            text(title).size(24),
+                let form = column![
+                    text(title).size(24),
 
-                                            text("Name:").size(16),
-                                            text_input("Enter author name", &self.author_name)
-                                                .on_input(Message::AuthorNameChanged)
-                                                .padding(10),
+                    text("Name:").size(16),
+                    text_input("Enter author name", &self.author_name)
+                        .on_input(Message::AuthorNameChanged)
+                        .padding(10),
 
-                                            row![
-                                                button("Save")
-                                                    .on_press(Message::SaveAuthor)
-                                                    .style(iced::theme::Button::Primary),
-                                                button("Cancel")
-                                                    .on_press(Message::ViewAuthorMode)
-                                                    .style(iced::theme::Button::Secondary),
-                                            ]
-                                            .spacing(10)
-                                        ]
-                                        .spacing(10)
-                                        .padding(20)
-                                        .max_width(500);
+                    row![
+                        button("Save")
+                            .on_press(Message::SaveAuthor)
+                            .style(iced::theme::Button::Primary),
+                        button("Cancel")
+                            .on_press(Message::ViewAuthorMode)
+                            .style(iced::theme::Button::Secondary),
+                    ]
+                    .spacing(10)
+                ]
+                .spacing(10)
+                .padding(20)
+                .max_width(500);
 
-                                        container(form)
-                                            .width(Length::Fill)
-                                            .height(Length::Fill)
-                                            .center_x()
-                                            .into()
-                                    }
-                                }
-                            }
-                        }
+                container(form)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .center_x()
+                    .into()
+            }
+        }
+    }
+}

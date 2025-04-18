@@ -1,11 +1,15 @@
+// src/db.rs
 use diesel::prelude::*;
-use diesel::r2d2::{self, ConnectionManager};
 use diesel::sqlite::SqliteConnection;
 use std::env;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 use anyhow::Result;
 use thiserror::Error;
+
+// Important: Use r2d2 directly, not through diesel
+use r2d2;
+use diesel::r2d2::ConnectionManager;
 
 use crate::models::{AuthorModel, BookModel, BookWithAuthor, NewAuthor, NewBook};
 use crate::schema::{Author, Books};
@@ -17,13 +21,20 @@ static DB_POOL: Lazy<Mutex<Option<DbPool>>> = Lazy::new(|| Mutex::new(None));
 #[derive(Debug, Error)]
 pub enum DbError {
     #[error("Database connection error: {0}")]
-    Connection(#[from] r2d2::Error),
+    Connection(String),
 
     #[error("Database query error: {0}")]
     Query(#[from] diesel::result::Error),
 
     #[error("Database pool not initialized")]
     PoolNotInitialized,
+}
+
+// Implementation for the standalone r2d2::Error
+impl From<r2d2::Error> for DbError {
+    fn from(err: r2d2::Error) -> Self {
+        DbError::Connection(err.to_string())
+    }
 }
 
 pub fn initialize_pool() -> Result<(), DbError> {
