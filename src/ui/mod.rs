@@ -10,7 +10,42 @@ pub use common::*;
 use crate::db;
 use crate::models::{AuthorModel, BookModel, BookWithAuthor};
 use iced::{executor, Application, Command, Element, Theme};
+use std::cmp::Ordering;
 use std::fmt;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SortField {
+    Title,
+    Author,
+    Price,
+    DateAdded,
+}
+
+impl fmt::Display for SortField {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SortField::Title => write!(f, "Title"),
+            SortField::Author => write!(f, "Author"),
+            SortField::Price => write!(f, "Price"),
+            SortField::DateAdded => write!(f, "Date Added"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SortDirection {
+    Ascending,
+    Descending,
+}
+
+impl fmt::Display for SortDirection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SortDirection::Ascending => write!(f, "A-Z, Low to High"),
+            SortDirection::Descending => write!(f, "Z-A, High to Low"),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Tab {
@@ -39,6 +74,11 @@ pub enum Mode {
 pub enum Message {
     // Navigation
     TabSelected(Tab),
+
+    // Sorting
+    SortFieldSelected(SortField),
+    SortDirectionSelected(SortDirection),
+    ApplySorting,
 
     // Search Messages
     SearchQueryChanged(String),
@@ -84,6 +124,10 @@ pub struct BookshelfApp {
     current_tab: Tab,
     mode: Mode,
 
+    // Sorting state
+    sort_field: SortField,
+    sort_direction: SortDirection,
+
     // Search state
     search_query: String,
     search_term_displayed: String, // Static term that was searched for
@@ -119,6 +163,8 @@ impl Application for BookshelfApp {
             Self {
                 current_tab: Tab::Books,
                 mode: Mode::View,
+                sort_field: SortField::Title,
+                sort_direction: SortDirection::Ascending,
                 search_query: String::new(),
                 search_term_displayed: String::new(),
                 is_searching: false,
@@ -169,6 +215,32 @@ impl Application for BookshelfApp {
                     Tab::Books => return self.update(Message::LoadBooks),
                     Tab::Authors => return self.update(Message::LoadAuthors),
                 }
+            }
+
+            // Sorting messages
+            Message::SortFieldSelected(field) => {
+                self.sort_field = field;
+                Command::none()
+            }
+
+            Message::SortDirectionSelected(direction) => {
+                self.sort_direction = direction;
+                Command::none()
+            }
+
+            Message::ApplySorting => {
+                // Sort the books based on the selected field and direction
+                let books_to_sort = if self.is_searching {
+                    self.filtered_books.as_mut()
+                } else {
+                    Some(&mut self.books)
+                };
+
+                if let Some(books) = books_to_sort {
+                    sort_books(books, &self.sort_field, &self.sort_direction);
+                }
+
+                Command::none()
             }
 
             // Search messages
@@ -230,6 +302,9 @@ impl Application for BookshelfApp {
 
                     self.filtered_books = Some(filtered);
                     self.search_term_displayed = self.search_query.clone();
+
+                    // Apply current sorting to search results
+                    return self.update(Message::ApplySorting);
                 }
 
                 Command::none()
@@ -245,7 +320,14 @@ impl Application for BookshelfApp {
 
             // Book messages handled in the book module
             Message::LoadBooks => book_view::handle_load_books(self),
-            Message::BooksLoaded(result) => book_view::handle_books_loaded(self, result),
+            Message::BooksLoaded(result) => {
+                let command = book_view::handle_books_loaded(self, result);
+                // Apply the current sorting after loading books
+                if !self.books.is_empty() {
+                    self.update(Message::ApplySorting);
+                }
+                command
+            }
             Message::AddBookMode => book_view::handle_add_book_mode(self),
             Message::EditBookMode(book) => book_view::handle_edit_book_mode(self, book),
             Message::ViewBookMode => book_view::handle_view_book_mode(self),
@@ -293,4 +375,50 @@ impl Application for BookshelfApp {
     fn view(&self) -> Element<Message> {
         common::view(self)
     }
+}
+
+// Helper function to sort books
+pub fn sort_books(books: &mut Vec<BookWithAuthor>, field: &SortField, direction: &SortDirection) {
+    books.sort_by(|a, b| {
+        let order = match field {
+            SortField::Title => a
+                .book
+                .title
+                .to_lowercase()
+                .cmp(&b.book.title.to_lowercase()),
+            SortField::Author => {
+                let a_author = a
+                    .author
+                    .as_ref()
+                    .and_then(|author| author.Name.clone())
+                    .unwrap_or_else(|| String::from(""));
+                let b_author = b
+                    .author
+                    .as_ref()
+                    .and_then(|author| author.Name.clone())
+                    .unwrap_or_else(|| String::from(""));
+                a_author.to_lowercase().cmp(&b_author.to_lowercase())
+            }
+            SortField::Price => {
+                let a_price = a.book.price.unwrap_or(0.0);
+                let b_price = b.book.price.unwrap_or(0.0);
+                a_price.partial_cmp(&b_price).unwrap_or(Ordering::Equal)
+            }
+            SortField::DateAdded => {
+                let a_date = a.book.added;
+                let b_date = b.book.added;
+                match (a_date, b_date) {
+                    (Some(a_d), Some(b_d)) => a_d.cmp(&b_d),
+                    (Some(_), None) => Ordering::Less,
+                    (None, Some(_)) => Ordering::Greater,
+                    (None, None) => Ordering::Equal,
+                }
+            }
+        };
+
+        match direction {
+            SortDirection::Ascending => order,
+            SortDirection::Descending => order.reverse(),
+        }
+    });
 }

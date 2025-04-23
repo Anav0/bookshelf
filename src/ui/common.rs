@@ -1,8 +1,8 @@
 // src/ui/common.rs
 use crate::ui::author_view;
 use crate::ui::book_view;
-use crate::ui::{BookshelfApp, Message, Tab};
-use iced::widget::{button, column, container, row, text, text_input};
+use crate::ui::{BookshelfApp, Message, SortDirection, SortField, Tab};
+use iced::widget::{button, column, container, pick_list, row, text, text_input};
 use iced::{Color, Element, Length};
 
 pub fn view(app: &BookshelfApp) -> Element<Message> {
@@ -35,39 +35,74 @@ pub fn view(app: &BookshelfApp) -> Element<Message> {
         container(text("")).width(Length::Fill)
     };
 
-    // Only show search bar in Books tab
-    let search_bar = if matches!(app.current_tab, Tab::Books) {
+    // Only show search and sort options in Books tab
+    let top_bar = if matches!(app.current_tab, Tab::Books) {
         let search_placeholder = "Search by title, author, or price...";
 
-        container(
-            row![
-                text_input(search_placeholder, &app.search_query)
-                    .on_input(Message::SearchQueryChanged)
-                    .on_submit(Message::PerformSearch)
-                    .padding(10)
-                    .width(Length::Fill),
-                button("Search")
-                    .on_press(Message::PerformSearch)
-                    .style(iced::theme::Button::Primary)
-                    .padding(8),
-                if !app.search_query.is_empty() {
-                    button("Clear")
-                        .on_press(Message::ClearSearch)
+        column![
+            // Search bar
+            container(
+                row![
+                    text_input(search_placeholder, &app.search_query)
+                        .on_input(Message::SearchQueryChanged)
+                        .on_submit(Message::PerformSearch)
+                        .padding(10)
+                        .width(Length::Fill),
+                    button("Search")
+                        .on_press(Message::PerformSearch)
+                        .style(iced::theme::Button::Primary)
+                        .padding(8),
+                    if !app.search_query.is_empty() {
+                        button("Clear")
+                            .on_press(Message::ClearSearch)
+                            .style(iced::theme::Button::Secondary)
+                            .padding(8)
+                    } else {
+                        button("Clear")
+                            .style(iced::theme::Button::Secondary)
+                            .padding(8)
+                    }
+                ]
+                .spacing(10)
+                .padding(10)
+                .width(Length::Fill)
+            ),
+            // Sort options
+            container(
+                row![
+                    text("Sort by:").size(14),
+                    pick_list(
+                        vec![
+                            SortField::Title,
+                            SortField::Author,
+                            SortField::Price,
+                            SortField::DateAdded
+                        ],
+                        Some(app.sort_field.clone()),
+                        Message::SortFieldSelected
+                    )
+                    .padding(8)
+                    .width(Length::FillPortion(3)),
+                    pick_list(
+                        vec![SortDirection::Ascending, SortDirection::Descending],
+                        Some(app.sort_direction.clone()),
+                        Message::SortDirectionSelected
+                    )
+                    .padding(8)
+                    .width(Length::FillPortion(3)),
+                    button("Apply")
+                        .on_press(Message::ApplySorting)
                         .style(iced::theme::Button::Secondary)
                         .padding(8)
-                } else {
-                    button("Clear")
-                        .style(iced::theme::Button::Secondary)
-                        .padding(8)
-                }
-            ]
-            .spacing(10)
-            .padding(10)
-            .width(Length::Fill),
-        )
+                ]
+                .spacing(10)
+                .padding(10)
+                .width(Length::Fill)
+            )
+        ]
     } else {
-        // Empty container for Authors tab - now of the same type as the 'if' branch
-        container(row![].width(Length::Fill))
+        // Empty container for Authors tab
+        column![container(row![]).width(Length::Fill).height(Length::Shrink)]
     };
 
     // Main content
@@ -76,5 +111,5 @@ pub fn view(app: &BookshelfApp) -> Element<Message> {
         Tab::Authors => author_view::view(app),
     };
 
-    column![tab_row, error_message, search_bar, content,].into()
+    column![tab_row, error_message, top_bar, content,].into()
 }
