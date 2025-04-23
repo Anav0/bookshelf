@@ -40,6 +40,11 @@ pub enum Message {
     // Navigation
     TabSelected(Tab),
 
+    // Search Messages
+    SearchQueryChanged(String),
+    PerformSearch,
+    ClearSearch,
+
     // Book Messages
     LoadBooks,
     BooksLoaded(Result<Vec<BookWithAuthor>, String>),
@@ -79,6 +84,12 @@ pub struct BookshelfApp {
     current_tab: Tab,
     mode: Mode,
 
+    // Search state
+    search_query: String,
+    search_term_displayed: String, // Static term that was searched for
+    is_searching: bool,
+    filtered_books: Option<Vec<BookWithAuthor>>,
+
     // Book state
     books: Vec<BookWithAuthor>,
     current_book: Option<BookWithAuthor>,
@@ -108,6 +119,10 @@ impl Application for BookshelfApp {
             Self {
                 current_tab: Tab::Books,
                 mode: Mode::View,
+                search_query: String::new(),
+                search_term_displayed: String::new(),
+                is_searching: false,
+                filtered_books: None,
                 books: Vec::new(),
                 current_book: None,
                 book_title: String::new(),
@@ -145,11 +160,87 @@ impl Application for BookshelfApp {
             Message::TabSelected(tab) => {
                 self.current_tab = tab.clone();
                 self.mode = Mode::View;
+                self.search_query = String::new();
+                self.search_term_displayed = String::new();
+                self.is_searching = false;
+                self.filtered_books = None;
 
                 match tab {
                     Tab::Books => return self.update(Message::LoadBooks),
                     Tab::Authors => return self.update(Message::LoadAuthors),
                 }
+            }
+
+            // Search messages
+            Message::SearchQueryChanged(query) => {
+                self.search_query = query;
+                Command::none()
+            }
+
+            Message::PerformSearch => {
+                if self.search_query.is_empty() {
+                    self.is_searching = false;
+                    self.filtered_books = None;
+                    return Command::none();
+                }
+
+                self.is_searching = true;
+
+                // Perform local search in the Books tab
+                if let Tab::Books = self.current_tab {
+                    let query = self.search_query.to_lowercase();
+                    let filtered: Vec<BookWithAuthor> = self
+                        .books
+                        .iter()
+                        .filter(|book| {
+                            // Search by title
+                            let title_match = book.book.title.to_lowercase().contains(&query);
+
+                            // Search by author name
+                            let author_match = book
+                                .author
+                                .as_ref()
+                                .and_then(|a| a.Name.clone())
+                                .map(|name| name.to_lowercase().contains(&query))
+                                .unwrap_or(false);
+
+                            // Search by price - flexible matching without rounding
+                            let price_match = book.book.price.map_or(false, |price| {
+                                // Try to parse the query as a number (float or integer)
+                                if let Ok(query_num) = query.parse::<f32>() {
+                                    // Convert the price to string to check if it contains the query
+                                    let price_str = price.to_string();
+
+                                    // Check if the price starts with the query number
+                                    // (e.g., searching for "41" should match "41.99")
+                                    price_str.starts_with(&query_num.to_string()) ||
+
+                                    // Or a direct equality check for exact prices
+                                    (price == query_num)
+                                } else {
+                                    // If query isn't a valid number, check if price string contains the query
+                                    price.to_string().contains(&query)
+                                }
+                            });
+
+                            title_match || author_match || price_match
+                        })
+                        .cloned()
+                        .collect();
+
+                    self.filtered_books = Some(filtered);
+                    self.search_term_displayed = self.search_query.clone();
+                }
+
+                Command::none()
+            }
+
+            Message::ClearSearch => {
+                self.search_query = String::new();
+                self.search_term_displayed = String::new();
+                self.is_searching = false;
+                self.filtered_books = None;
+                Command::none()
             }
 
             // Book messages handled in the book module

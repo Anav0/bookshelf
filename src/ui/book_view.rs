@@ -26,6 +26,8 @@ pub fn handle_books_loaded(
     match result {
         Ok(books) => {
             app.books = books;
+            app.filtered_books = None; // Reset filtered books when loading all books
+            app.is_searching = false;
         }
         Err(e) => {
             app.error = Some(e);
@@ -240,15 +242,45 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
         .on_press(Message::AddBookMode)
         .style(iced::theme::Button::Primary);
 
-    let book_list = if app.books.is_empty() {
-        column![text("No books found").size(16)]
-            .spacing(5)
-            .width(Length::Fill)
-            .padding(20)
+    // Determine whether to show all books or filtered search results
+    let books_to_display = if app.is_searching {
+        app.filtered_books.as_ref().unwrap_or(&app.books)
+    } else {
+        &app.books
+    };
+
+    let search_status = if app.is_searching {
+        if let Some(filtered) = &app.filtered_books {
+            if filtered.is_empty() {
+                format!("No books found matching '{}'", app.search_term_displayed)
+            } else {
+                format!(
+                    "Found {} books matching '{}'",
+                    filtered.len(),
+                    app.search_term_displayed
+                )
+            }
+        } else {
+            "Search results".to_string()
+        }
+    } else {
+        "Books".to_string()
+    };
+
+    let book_list = if books_to_display.is_empty() {
+        column![text(if app.is_searching {
+            format!("No books found matching '{}'", app.search_term_displayed)
+        } else {
+            "No books found".to_string()
+        })
+        .size(16)]
+        .spacing(5)
+        .width(Length::Fill)
+        .padding(20)
     } else {
         let mut col = column![].spacing(15).width(Length::Fill).padding(20);
 
-        for book in &app.books {
+        for book in books_to_display {
             let author_name = book
                 .author
                 .as_ref()
@@ -258,7 +290,7 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
             let price_text = book
                 .book
                 .price
-                .map(|p| format!("${:.2}", p))
+                .map(|p| format!("{:.2}zł", p))
                 .unwrap_or_else(|| "No price".to_string());
 
             let book_row = row![
@@ -297,7 +329,7 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
 
     column![
         row![
-            text("Books").size(24),
+            text(search_status).size(24),
             iced::widget::horizontal_space(Length::Fill),
             add_button
         ]
