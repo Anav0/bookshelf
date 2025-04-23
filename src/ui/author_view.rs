@@ -132,6 +132,7 @@ pub fn view(app: &BookshelfApp) -> Element<Message> {
     match app.mode {
         Mode::View => view_author_list(app),
         Mode::Add | Mode::Edit => view_author_form(app),
+        Mode::ConfirmDelete(_, _) => todo!(),
     }
 }
 

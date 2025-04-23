@@ -31,6 +31,7 @@ pub fn handle_books_loaded(
             app.error = Some(e);
         }
     }
+
     Command::none()
 }
 
@@ -183,6 +184,22 @@ pub fn handle_book_saved(
     }
 }
 
+// New handler for confirming deletion
+pub fn handle_confirm_delete_book(
+    app: &mut BookshelfApp,
+    id: i32,
+    title: String,
+) -> Command<Message> {
+    app.mode = Mode::ConfirmDelete(id, title);
+    Command::none()
+}
+
+// New handler for canceling deletion
+pub fn handle_cancel_delete_book(app: &mut BookshelfApp) -> Command<Message> {
+    app.mode = Mode::View;
+    Command::none()
+}
+
 pub fn handle_delete_book(app: &mut BookshelfApp, id: i32) -> Command<Message> {
     Command::perform(
         async move {
@@ -210,9 +227,10 @@ pub fn handle_book_deleted(
 
 // View functions for books
 pub fn view(app: &BookshelfApp) -> Element<Message> {
-    match app.mode {
+    match &app.mode {
         Mode::View => view_book_list(app),
         Mode::Add | Mode::Edit => view_book_form(app),
+        Mode::ConfirmDelete(id, title) => view_delete_confirmation(app, *id, title),
     }
 }
 
@@ -225,8 +243,9 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
         column![text("No books found").size(16)]
             .spacing(5)
             .width(Length::Fill)
+            .padding(20)
     } else {
-        let mut col = column![].spacing(10).width(Length::Fill);
+        let mut col = column![].spacing(15).width(Length::Fill).padding(20);
 
         for book in &app.books {
             let author_name = book
@@ -247,19 +266,29 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
                     text(format!("By: {}", author_name)).size(14),
                     text(price_text).size(14),
                 ]
-                .spacing(5)
+                .spacing(8)
                 .width(Length::Fill),
                 button("Edit")
                     .on_press(Message::EditBookMode(book.clone()))
-                    .style(iced::theme::Button::Secondary),
+                    .style(iced::theme::Button::Secondary)
+                    .padding(8),
                 button("Delete")
-                    .on_press(Message::DeleteBook(book.book.id))
-                    .style(iced::theme::Button::Destructive),
+                    .on_press(Message::ConfirmDeleteBook(
+                        book.book.id,
+                        book.book.title.clone()
+                    ))
+                    .style(iced::theme::Button::Destructive)
+                    .padding(8),
             ]
-            .spacing(10)
+            .spacing(15)
+            .padding(10)
             .align_items(iced::Alignment::Center);
 
-            col = col.push(book_row);
+            col = col.push(
+                container(book_row)
+                    .padding(10)
+                    .style(iced::theme::Container::Box),
+            );
         }
 
         col
@@ -271,12 +300,12 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
             iced::widget::horizontal_space(Length::Fill),
             add_button
         ]
-        .padding(10)
+        .padding(15)
         .width(Length::Fill),
-        scrollable(container(book_list).padding(10).width(Length::Fill)).height(Length::Fill)
+        scrollable(container(book_list).width(Length::Fill)).height(Length::Fill)
     ]
     .spacing(20)
-    .padding(20)
+    .padding(25)
     .into()
 }
 
@@ -333,5 +362,47 @@ fn view_book_form(app: &BookshelfApp) -> Element<Message> {
         .width(Length::Fill)
         .height(Length::Fill)
         .center_x()
+        .into()
+}
+
+// New function to display deletion confirmation
+fn view_delete_confirmation<'a>(
+    app: &'a BookshelfApp,
+    id: i32,
+    title: &'a str,
+) -> Element<'a, Message> {
+    // fn view_delete_confirmation(app: &BookshelfApp, id: i32, title: &str) -> Element<Message> {
+    let confirmation = column![
+        text(format!("Are you sure you want to delete the book:")).size(20),
+        text(format!("\"{}\"?", title))
+            .size(24)
+            .style(iced::Color::from_rgb(0.8, 0.0, 0.0)),
+        text("This action cannot be undone.").size(16),
+        row![
+            button("Cancel")
+                .on_press(Message::CancelDeleteBook)
+                .style(iced::theme::Button::Secondary)
+                .padding(10)
+                .width(Length::Fill),
+            button("Confirm Delete")
+                .on_press(Message::DeleteBook(id))
+                .style(iced::theme::Button::Destructive)
+                .padding(10)
+                .width(Length::Fill),
+        ]
+        .spacing(20)
+        .padding(20)
+    ]
+    .spacing(20)
+    .padding(30)
+    .width(Length::Fill)
+    .align_items(iced::Alignment::Center);
+
+    container(confirmation)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .center_x()
+        .center_y()
+        .style(iced::theme::Container::Box)
         .into()
 }

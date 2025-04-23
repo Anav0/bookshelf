@@ -1,3 +1,4 @@
+// src/ui/mod.rs
 mod author_view;
 mod book_view;
 mod common;
@@ -31,6 +32,7 @@ pub enum Mode {
     View,
     Add,
     Edit,
+    ConfirmDelete(i32, String), // ID and name of item to delete
 }
 
 #[derive(Debug, Clone)]
@@ -51,7 +53,9 @@ pub enum Message {
     BookAuthorSelected(AuthorModel),
     SaveBook,
     BookSaved(Result<BookModel, String>),
+    ConfirmDeleteBook(i32, String), // Add confirmation step
     DeleteBook(i32),
+    CancelDeleteBook,
     BookDeleted(Result<usize, String>),
 
     // Author Messages
@@ -167,6 +171,10 @@ impl Application for BookshelfApp {
             }
             Message::SaveBook => book_view::handle_save_book(self),
             Message::BookSaved(result) => book_view::handle_book_saved(self, result),
+            Message::ConfirmDeleteBook(id, title) => {
+                book_view::handle_confirm_delete_book(self, id, title)
+            }
+            Message::CancelDeleteBook => book_view::handle_cancel_delete_book(self),
             Message::DeleteBook(id) => book_view::handle_delete_book(self, id),
             Message::BookDeleted(result) => book_view::handle_book_deleted(self, result),
 
