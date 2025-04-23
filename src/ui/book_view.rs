@@ -31,7 +31,6 @@ pub fn handle_books_loaded(
             app.error = Some(e);
         }
     }
-
     Command::none()
 }
 
@@ -216,11 +215,13 @@ pub fn handle_book_deleted(
     app: &mut BookshelfApp,
     result: Result<usize, String>,
 ) -> Command<Message> {
+    app.mode = Mode::View; // Ensure we go back to view mode
+
     match result {
         Ok(_) => app.update(Message::LoadBooks),
         Err(e) => {
             app.error = Some(e);
-            Command::none()
+            app.update(Message::LoadBooks) // Always go back to book list even on error
         }
     }
 }
