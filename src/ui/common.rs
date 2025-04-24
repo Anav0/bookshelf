@@ -89,11 +89,7 @@ pub fn view(app: &BookshelfApp) -> Element<Message> {
                         Message::SortDirectionSelected
                     )
                     .padding(8)
-                    .width(Length::FillPortion(3)),
-                    button("Apply")
-                        .on_press(Message::ApplySorting)
-                        .style(iced::theme::Button::Secondary)
-                        .padding(8)
+                    .width(Length::FillPortion(3)) // Remove the Apply button
                 ]
                 .spacing(10)
                 .padding(10)

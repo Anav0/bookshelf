@@ -6,6 +6,8 @@ use chrono::{Local, NaiveDateTime};
 use iced::widget::{button, column, container, pick_list, row, scrollable, text, text_input};
 use iced::{Application, Command, Element, Length};
 
+use super::sort_books;
+
 // Handler functions for book-related messages
 pub fn handle_load_books(app: &mut BookshelfApp) -> Command<Message> {
     Command::perform(
@@ -17,23 +19,6 @@ pub fn handle_load_books(app: &mut BookshelfApp) -> Command<Message> {
         },
         Message::BooksLoaded,
     )
-}
-
-pub fn handle_books_loaded(
-    app: &mut BookshelfApp,
-    result: Result<Vec<BookWithAuthor>, String>,
-) -> Command<Message> {
-    match result {
-        Ok(books) => {
-            app.books = books;
-            app.filtered_books = None; // Reset filtered books when loading all books
-            app.is_searching = false;
-        }
-        Err(e) => {
-            app.error = Some(e);
-        }
-    }
-    Command::none()
 }
 
 pub fn handle_add_book_mode(app: &mut BookshelfApp) -> Command<Message> {
@@ -211,6 +196,26 @@ pub fn handle_delete_book(app: &mut BookshelfApp, id: i32) -> Command<Message> {
         },
         Message::BookDeleted,
     )
+}
+
+pub fn handle_books_loaded(
+    app: &mut BookshelfApp,
+    result: Result<Vec<BookWithAuthor>, String>,
+) -> Command<Message> {
+    match result {
+        Ok(books) => {
+            app.books = books;
+            app.filtered_books = None; // Reset filtered books when loading all books
+            app.is_searching = false;
+
+            // Apply sorting directly to the loaded books
+            sort_books(&mut app.books, &app.sort_field, &app.sort_direction);
+        }
+        Err(e) => {
+            app.error = Some(e);
+        }
+    }
+    Command::none()
 }
 
 pub fn handle_book_deleted(

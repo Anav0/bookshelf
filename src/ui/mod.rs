@@ -217,14 +217,33 @@ impl Application for BookshelfApp {
                 }
             }
 
-            // Sorting messages
             Message::SortFieldSelected(field) => {
                 self.sort_field = field;
+                // Apply sorting immediately
+                let books_to_sort = if self.is_searching {
+                    self.filtered_books.as_mut()
+                } else {
+                    Some(&mut self.books)
+                };
+
+                if let Some(books) = books_to_sort {
+                    sort_books(books, &self.sort_field, &self.sort_direction);
+                }
                 Command::none()
             }
 
             Message::SortDirectionSelected(direction) => {
                 self.sort_direction = direction;
+                // Apply sorting immediately
+                let books_to_sort = if self.is_searching {
+                    self.filtered_books.as_mut()
+                } else {
+                    Some(&mut self.books)
+                };
+
+                if let Some(books) = books_to_sort {
+                    sort_books(books, &self.sort_field, &self.sort_direction);
+                }
                 Command::none()
             }
 
@@ -303,8 +322,10 @@ impl Application for BookshelfApp {
                     self.filtered_books = Some(filtered);
                     self.search_term_displayed = self.search_query.clone();
 
-                    // Apply current sorting to search results
-                    return self.update(Message::ApplySorting);
+                    // Apply current sorting directly to search results
+                    if let Some(filtered_books) = &mut self.filtered_books {
+                        sort_books(filtered_books, &self.sort_field, &self.sort_direction);
+                    }
                 }
 
                 Command::none()
