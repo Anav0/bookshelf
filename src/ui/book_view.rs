@@ -353,7 +353,8 @@ fn view_book_form(app: &BookshelfApp) -> Element<Message> {
         _ => unreachable!(),
     };
 
-    let author_options: Vec<AuthorModel> = app.authors.clone();
+    let mut author_options = app.authors.clone();
+    author_options.sort_by(|a, b| a.Name.cmp(&b.Name));
 
     let form = column![
         text(title).size(24),
