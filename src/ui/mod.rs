@@ -2,6 +2,7 @@
 mod author_view;
 mod book_view;
 mod common;
+mod variables;
 
 pub use author_view::*;
 pub use book_view::*;

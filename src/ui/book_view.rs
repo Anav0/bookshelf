@@ -5,7 +5,7 @@ use crate::ui::{BookshelfApp, Message, Mode};
 use chrono::{Local, NaiveDateTime};
 use iced::widget::{button, column, container, pick_list, row, scrollable, text, text_input};
 use iced::{Application, Command, Element, Length};
-
+use crate::ui::variables::LIST_MAX_WIDTH;
 use super::sort_books;
 
 // Handler functions for book-related messages
@@ -394,7 +394,7 @@ fn view_book_form(app: &BookshelfApp) -> Element<Message> {
     ]
     .spacing(10)
     .padding(20)
-    .max_width(500);
+    .max_width(LIST_MAX_WIDTH);
 
     container(form)
         .width(Length::Fill)

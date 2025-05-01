@@ -4,6 +4,7 @@ use crate::ui::book_view;
 use crate::ui::{BookshelfApp, Message, SortDirection, SortField, Tab};
 use iced::widget::{button, column, container, pick_list, row, text, text_input};
 use iced::{Color, Element, Length};
+use crate::ui::variables::{LIST_PADDING, LIST_SPACING};
 
 pub fn view(app: &BookshelfApp) -> Element<Message> {
     // Tabs navigation
@@ -23,8 +24,8 @@ pub fn view(app: &BookshelfApp) -> Element<Message> {
                 iced::theme::Button::Secondary
             }),
     ]
-    .spacing(10)
-    .padding(10);
+    .spacing(LIST_SPACING)
+    .padding(LIST_PADDING);
 
     // Error messages
     let error_message = if let Some(error) = &app.error {
@@ -63,8 +64,8 @@ pub fn view(app: &BookshelfApp) -> Element<Message> {
                             .padding(8)
                     }
                 ]
-                .spacing(10)
-                .padding(10)
+                .spacing(LIST_SPACING)
+                .padding(LIST_PADDING)
                 .width(Length::Fill)
             ),
             // Sort options
@@ -91,8 +92,8 @@ pub fn view(app: &BookshelfApp) -> Element<Message> {
                     .padding(8)
                     .width(Length::FillPortion(3)) // Remove the Apply button
                 ]
-                .spacing(10)
-                .padding(10)
+                .spacing(LIST_SPACING)
+                .padding(LIST_PADDING)
                 .width(Length::Fill)
             )
         ]

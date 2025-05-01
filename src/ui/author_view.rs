@@ -4,6 +4,7 @@ use crate::models::{AuthorModel, NewAuthor};
 use crate::ui::{BookshelfApp, Message, Mode};
 use iced::widget::{button, column, container, row, scrollable, text, text_input};
 use iced::{Application, Command, Element, Length};
+use crate::ui::variables::{LIST_MAX_WIDTH, LIST_PADDING, LIST_SPACING};
 
 // Handler functions for author-related messages
 pub fn handle_load_authors(app: &mut BookshelfApp) -> Command<Message> {
@@ -163,7 +164,7 @@ fn view_author_list(app: &BookshelfApp) -> Element<Message> {
                     .on_press(Message::DeleteAuthor(author.Id))
                     .style(iced::theme::Button::Destructive),
             ]
-            .spacing(10)
+            .spacing(LIST_SPACING)
             .align_items(iced::Alignment::Center);
 
             col = col.push(author_row);
@@ -178,12 +179,12 @@ fn view_author_list(app: &BookshelfApp) -> Element<Message> {
             iced::widget::horizontal_space(Length::Fill),
             add_button
         ]
-        .padding(10)
+        .padding(LIST_PADDING)
         .width(Length::Fill),
         scrollable(container(author_list).padding(10).width(Length::Fill)).height(Length::Fill)
     ]
-    .spacing(20)
-    .padding(20)
+    .spacing(LIST_SPACING)
+    .padding(LIST_PADDING)
     .into()
 }
 
@@ -210,9 +211,9 @@ fn view_author_form(app: &BookshelfApp) -> Element<Message> {
         ]
         .spacing(10)
     ]
-    .spacing(10)
-    .padding(20)
-    .max_width(500);
+    .spacing(LIST_SPACING)
+    .padding(LIST_PADDING)
+    .max_width(LIST_MAX_WIDTH);
 
     container(form)
         .width(Length::Fill)
