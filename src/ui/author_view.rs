@@ -1,12 +1,10 @@
 // src/ui/author_view.rs
 use crate::db;
-use crate::models::{AuthorModel, NewAuthor};
-use crate::ui::{BookshelfApp, Message, Mode};
+use crate::models::{AuthorModel, BookWithAuthor, NewAuthor};
+use crate::ui::{BookshelfApp, Message, Mode, Tab};
 use iced::widget::{button, column, container, row, scrollable, text, text_input};
 use iced::{Application, Command, Element, Length};
-use crate::ui::variables::{LIST_MAX_WIDTH, LIST_PADDING, LIST_SPACING};
 
-// Handler functions for author-related messages
 pub fn handle_load_authors(app: &mut BookshelfApp) -> Command<Message> {
     Command::perform(
         async {
@@ -51,8 +49,40 @@ pub fn handle_edit_author_mode(app: &mut BookshelfApp, author: AuthorModel) -> C
 pub fn handle_view_author_mode(app: &mut BookshelfApp) -> Command<Message> {
     app.mode = Mode::View;
     app.current_author = None;
+    app.author_books = Vec::new();
 
     app.update(Message::LoadAuthors)
+}
+
+pub fn handle_view_author_details(app: &mut BookshelfApp, author: AuthorModel) -> Command<Message> {
+    app.mode = Mode::ViewDetails;
+    app.current_author = Some(author.clone());
+
+    // Load books by this author
+    Command::perform(
+        async move {
+            match db::get_books_by_author(author.Id) {
+                Ok(books) => Ok(books),
+                Err(e) => Err(e.to_string()),
+            }
+        },
+        Message::AuthorBooksLoaded,
+    )
+}
+
+pub fn handle_author_books_loaded(
+    app: &mut BookshelfApp,
+    result: Result<Vec<BookWithAuthor>, String>,
+) -> Command<Message> {
+    match result {
+        Ok(books) => {
+            app.author_books = books;
+        }
+        Err(e) => {
+            app.error = Some(e);
+        }
+    }
+    Command::none()
 }
 
 pub fn handle_author_name_changed(app: &mut BookshelfApp, value: String) -> Command<Message> {
@@ -132,8 +162,9 @@ pub fn handle_author_deleted(
 pub fn view(app: &BookshelfApp) -> Element<Message> {
     match app.mode {
         Mode::View => view_author_list(app),
+        Mode::ViewDetails => view_author_details(app),
         Mode::Add | Mode::Edit => view_author_form(app),
-        Mode::ConfirmDelete(_, _) => todo!(),
+        Mode::ConfirmDelete(_, _) => view_author_list(app), // Fallback to list view
     }
 }
 
@@ -157,6 +188,9 @@ fn view_author_list(app: &BookshelfApp) -> Element<Message> {
 
             let author_row = row![
                 text(author_name).size(18).width(Length::Fill),
+                button("View")
+                    .on_press(Message::ViewAuthorDetails(author.clone()))
+                    .style(iced::theme::Button::Secondary),
                 button("Edit")
                     .on_press(Message::EditAuthorMode(author.clone()))
                     .style(iced::theme::Button::Secondary),
@@ -164,10 +198,14 @@ fn view_author_list(app: &BookshelfApp) -> Element<Message> {
                     .on_press(Message::DeleteAuthor(author.Id))
                     .style(iced::theme::Button::Destructive),
             ]
-            .spacing(LIST_SPACING)
-            .align_items(iced::Alignment::Center);
+                .spacing(10)
+                .align_items(iced::Alignment::Center);
 
-            col = col.push(author_row);
+            col = col.push(
+                container(author_row)
+                    .padding(10)
+                    .style(iced::theme::Container::Box),
+            );
         }
 
         col
@@ -179,13 +217,103 @@ fn view_author_list(app: &BookshelfApp) -> Element<Message> {
             iced::widget::horizontal_space(Length::Fill),
             add_button
         ]
-        .padding(LIST_PADDING)
+        .padding(10)
         .width(Length::Fill),
         scrollable(container(author_list).padding(10).width(Length::Fill)).height(Length::Fill)
     ]
-    .spacing(LIST_SPACING)
-    .padding(LIST_PADDING)
-    .into()
+        .spacing(20)
+        .padding(20)
+        .into()
+}
+
+fn view_author_details(app: &BookshelfApp) -> Element<Message> {
+    if let Some(author) = &app.current_author {
+        let author_name = author
+            .Name
+            .clone()
+            .unwrap_or_else(|| "Unnamed Author".to_string());
+
+        let back_button = button("Back to Authors")
+            .on_press(Message::ViewAuthorMode)
+            .style(iced::theme::Button::Secondary);
+
+        let edit_button = button("Edit Author")
+            .on_press(Message::EditAuthorMode(author.clone()))
+            .style(iced::theme::Button::Primary);
+
+        let delete_button = button("Delete Author")
+            .on_press(Message::DeleteAuthor(author.Id))
+            .style(iced::theme::Button::Destructive);
+
+        let header = row![
+            text(format!("Author: {}", author_name)).size(24),
+            iced::widget::horizontal_space(Length::Fill),
+            back_button,
+            edit_button,
+            delete_button,
+        ]
+            .spacing(10)
+            .padding(10)
+            .width(Length::Fill);
+
+        let book_count = app.author_books.len();
+        let book_list = if book_count == 0 {
+            column![text("No books found for this author").size(16)]
+                .spacing(5)
+                .width(Length::Fill)
+                .padding(20)
+        } else {
+            let mut col = column![
+                text(format!("Books by {} ({})", author_name, book_count)).size(20)
+            ]
+                .spacing(15)
+                .width(Length::Fill)
+                .padding(20);
+
+            for book in &app.author_books {
+                let price_text = book
+                    .book
+                    .price
+                    .map(|p| format!("{:.2}zł", p))
+                    .unwrap_or_else(|| "No price".to_string());
+
+                let book_row = row![
+                    column![
+                        text(&book.book.title).size(18),
+                        text(price_text).size(14),
+                    ]
+                    .spacing(8)
+                    .width(Length::Fill),
+                    button("View in Books")
+                        .on_press(Message::TabSelected(crate::ui::Tab::Books))
+                        .style(iced::theme::Button::Secondary)
+                        .padding(8),
+                ]
+                    .spacing(15)
+                    .padding(10)
+                    .align_items(iced::Alignment::Center);
+
+                col = col.push(
+                    container(book_row)
+                        .padding(10)
+                        .style(iced::theme::Container::Box),
+                );
+            }
+
+            col
+        };
+
+        column![
+            header,
+            scrollable(container(book_list).width(Length::Fill)).height(Length::Fill)
+        ]
+            .spacing(20)
+            .padding(20)
+            .into()
+    } else {
+        // Fallback in case no author is selected
+        view_author_list(app)
+    }
 }
 
 fn view_author_form(app: &BookshelfApp) -> Element<Message> {
@@ -211,9 +339,9 @@ fn view_author_form(app: &BookshelfApp) -> Element<Message> {
         ]
         .spacing(10)
     ]
-    .spacing(LIST_SPACING)
-    .padding(LIST_PADDING)
-    .max_width(LIST_MAX_WIDTH);
+        .spacing(10)
+        .padding(20)
+        .max_width(500);
 
     container(form)
         .width(Length::Fill)

@@ -1,12 +1,10 @@
 // src/ui/book_view.rs
 use crate::db;
 use crate::models::{AuthorModel, BookModel, BookWithAuthor, NewBook};
-use crate::ui::{BookshelfApp, Message, Mode};
+use crate::ui::{sort_books, BookshelfApp, Message, Mode, LIST_MAX_WIDTH};
 use chrono::{Local, NaiveDateTime};
 use iced::widget::{button, column, container, pick_list, row, scrollable, text, text_input};
 use iced::{Application, Command, Element, Length};
-use crate::ui::variables::LIST_MAX_WIDTH;
-use super::sort_books;
 
 // Handler functions for book-related messages
 pub fn handle_load_books(app: &mut BookshelfApp) -> Command<Message> {
@@ -239,6 +237,7 @@ pub fn view(app: &BookshelfApp) -> Element<Message> {
         Mode::View => view_book_list(app),
         Mode::Add | Mode::Edit => view_book_form(app),
         Mode::ConfirmDelete(id, title) => view_delete_confirmation(app, *id, title),
+        Mode::ViewDetails => view_book_list(app), // Fall back to book list view in this mode
     }
 }
 

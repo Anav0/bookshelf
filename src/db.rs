@@ -125,6 +125,31 @@ pub fn get_books() -> Result<Vec<BookWithAuthor>, DbError> {
     Ok(books_with_authors)
 }
 
+// New function to get books by author
+pub fn get_books_by_author(author_id: i32) -> Result<Vec<BookWithAuthor>, DbError> {
+    let mut conn = get_connection()?;
+
+    // Query books that have this author's ID as AuthorFK
+    let books = Books::table
+        .filter(Books::AuthorFK.eq(author_id))
+        .select(BookModel::as_select())
+        .load::<BookModel>(&mut conn)?;
+
+    // Get the author information once since it's the same for all books
+    let author = match Author::table.find(author_id).select(AuthorModel::as_select()).first(&mut conn) {
+        Ok(author) => Some(author),
+        Err(_) => None,
+    };
+
+    // Create BookWithAuthor structs
+    let books_with_author: Vec<BookWithAuthor> = books
+        .into_iter()
+        .map(|book| BookWithAuthor { book, author: author.clone() })
+        .collect();
+
+    Ok(books_with_author)
+}
+
 pub fn get_book(id: i32) -> Result<BookWithAuthor, DbError> {
     let mut conn = get_connection()?;
     let book = Books::table
