@@ -4,6 +4,37 @@ use crate::models::{AuthorModel, BookWithAuthor, NewAuthor};
 use crate::ui::{BookshelfApp, Message, Mode, Tab};
 use iced::widget::{button, column, container, row, scrollable, text, text_input};
 use iced::{Application, Command, Element, Length};
+use std::collections::HashMap;
+
+// Book statistics struct
+#[derive(Debug, Clone, Default)]
+struct BookStats {
+    bought: usize,
+    not_bought: usize,
+    finished: usize,
+}
+
+// Function to calculate book statistics for all authors
+fn calculate_author_stats(books_with_author: &[BookWithAuthor]) -> HashMap<i32, BookStats> {
+    let mut stats: HashMap<i32, BookStats> = HashMap::new();
+
+    for pair in books_with_author {
+        if let Some(author_id) = pair.book.AuthorFK {
+            let stat = stats.entry(author_id).or_default();
+            if pair.book.bought.is_some() {
+                stat.bought += 1;
+            } else {
+                stat.not_bought += 1;
+            }
+
+            if pair.book.finished.is_some() {
+                stat.finished += 1;
+            }
+        }
+    }
+
+    stats
+}
 
 // Handler functions for author-related messages
 pub fn handle_load_authors(app: &mut BookshelfApp) -> Command<Message> {
@@ -199,14 +230,30 @@ fn view_author_list(app: &BookshelfApp) -> Element<Message> {
     } else {
         let mut col = column![].spacing(10).width(Length::Fill);
 
+        // Collect book statistics for each author
+        let author_stats = calculate_author_stats(&app.books);
+
         for author in &app.authors {
             let author_name = author
                 .Name
                 .clone()
                 .unwrap_or_else(|| "Unnamed Author".to_string());
 
+            // Get stats for this author
+            let stats = author_stats.get(&author.Id).cloned().unwrap_or_default();
+
             let author_row = row![
-                text(author_name).size(18).width(Length::Fill),
+                column![
+                    text(author_name).size(18),
+                    row![
+                        text(format!("Bought: {}", stats.bought)).size(14),
+                        text(format!("Not bought: {}", stats.not_bought)).size(14),
+                        text(format!("Finished: {}", stats.finished)).size(14),
+                    ]
+                    .spacing(10)
+                ]
+                .spacing(5)
+                .width(Length::Fill),
                 button("View")
                     .on_press(Message::ViewAuthorDetails(author.clone()))
                     .style(iced::theme::Button::Secondary),
@@ -295,17 +342,37 @@ fn view_author_details(app: &BookshelfApp) -> Element<Message> {
                 .width(Length::Fill)
                 .padding(20);
 
-            for book in &app.author_books {
-                let price_text = book
+            for pair in &app.author_books {
+                let price_text = pair
                     .book
                     .price
                     .map(|p| format!("{:.2}zł", p))
                     .unwrap_or_else(|| "No price".to_string());
 
+                let status_text = {
+                    let mut statuses = Vec::new();
+
+                    if pair.book.bought.is_some() {
+                        statuses.push("Bought");
+                    } else {
+                        statuses.push("Not bought");
+                    }
+
+                    if pair.book.finished.is_some() {
+                        statuses.push("Finished");
+                    }
+
+                    statuses.join(" · ")
+                };
+
                 let book_row = row![
                     column![
-                        text(&book.book.title).size(18),
-                        text(price_text).size(14),
+                        text(&pair.book.title).size(18),
+                        row![
+                            text(price_text).size(14),
+                            text(status_text).size(14)
+                        ]
+                        .spacing(10)
                     ]
                     .spacing(8)
                     .width(Length::Fill),
