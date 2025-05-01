@@ -1,6 +1,6 @@
 // src/ui/common.rs
-use crate::ui::{author_view, LIST_PADDING, LIST_SPACING};
 use crate::ui::book_view;
+use crate::ui::{author_view, LIST_PADDING, LIST_SPACING};
 use crate::ui::{BookshelfApp, Message, SortDirection, SortField, Tab};
 use iced::widget::{button, column, container, pick_list, row, text, text_input};
 use iced::{Color, Element, Length};

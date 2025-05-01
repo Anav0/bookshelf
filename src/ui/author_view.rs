@@ -1,6 +1,7 @@
 // src/ui/author_view.rs
 use crate::db;
 use crate::models::{AuthorModel, BookWithAuthor, NewAuthor};
+use crate::ui::components::searchable_dropdown::SearchableDropdown;
 use crate::ui::{BookshelfApp, Message, Mode, Tab};
 use iced::widget::{button, column, container, row, scrollable, text, text_input};
 use iced::{Application, Command, Element, Length};
@@ -55,7 +56,8 @@ pub fn handle_authors_loaded(
 ) -> Command<Message> {
     match result {
         Ok(authors) => {
-            app.authors = authors;
+            app.authors = authors.clone();
+            app.author_dropdown = SearchableDropdown::new(authors, app.selected_author.clone());
         }
         Err(e) => {
             app.error = Some(e);
@@ -263,12 +265,15 @@ fn view_author_list(app: &BookshelfApp) -> Element<Message> {
                 button("Delete")
                     .on_press(Message::ConfirmDeleteAuthor(
                         author.Id,
-                        author.Name.clone().unwrap_or_else(|| "Unnamed Author".to_string())
+                        author
+                            .Name
+                            .clone()
+                            .unwrap_or_else(|| "Unnamed Author".to_string())
                     ))
                     .style(iced::theme::Button::Destructive),
             ]
-                .spacing(10)
-                .align_items(iced::Alignment::Center);
+            .spacing(10)
+            .align_items(iced::Alignment::Center);
 
             col = col.push(
                 container(author_row)
@@ -290,9 +295,9 @@ fn view_author_list(app: &BookshelfApp) -> Element<Message> {
         .width(Length::Fill),
         scrollable(container(author_list).padding(10).width(Length::Fill)).height(Length::Fill)
     ]
-        .spacing(20)
-        .padding(20)
-        .into()
+    .spacing(20)
+    .padding(20)
+    .into()
 }
 
 fn view_author_details(app: &BookshelfApp) -> Element<Message> {
@@ -313,7 +318,10 @@ fn view_author_details(app: &BookshelfApp) -> Element<Message> {
         let delete_button = button("Delete Author")
             .on_press(Message::ConfirmDeleteAuthor(
                 author.Id,
-                author.Name.clone().unwrap_or_else(|| "Unnamed Author".to_string())
+                author
+                    .Name
+                    .clone()
+                    .unwrap_or_else(|| "Unnamed Author".to_string()),
             ))
             .style(iced::theme::Button::Destructive);
 
@@ -324,9 +332,9 @@ fn view_author_details(app: &BookshelfApp) -> Element<Message> {
             edit_button,
             delete_button,
         ]
-            .spacing(10)
-            .padding(10)
-            .width(Length::Fill);
+        .spacing(10)
+        .padding(10)
+        .width(Length::Fill);
 
         let book_count = app.author_books.len();
         let book_list = if book_count == 0 {
@@ -335,12 +343,11 @@ fn view_author_details(app: &BookshelfApp) -> Element<Message> {
                 .width(Length::Fill)
                 .padding(20)
         } else {
-            let mut col = column![
-                text(format!("Books by {} ({})", author_name, book_count)).size(20)
-            ]
-                .spacing(15)
-                .width(Length::Fill)
-                .padding(20);
+            let mut col =
+                column![text(format!("Books by {} ({})", author_name, book_count)).size(20)]
+                    .spacing(15)
+                    .width(Length::Fill)
+                    .padding(20);
 
             for pair in &app.author_books {
                 let price_text = pair
@@ -368,11 +375,7 @@ fn view_author_details(app: &BookshelfApp) -> Element<Message> {
                 let book_row = row![
                     column![
                         text(&pair.book.title).size(18),
-                        row![
-                            text(price_text).size(14),
-                            text(status_text).size(14)
-                        ]
-                        .spacing(10)
+                        row![text(price_text).size(14), text(status_text).size(14)].spacing(10)
                     ]
                     .spacing(8)
                     .width(Length::Fill),
@@ -381,9 +384,9 @@ fn view_author_details(app: &BookshelfApp) -> Element<Message> {
                         .style(iced::theme::Button::Secondary)
                         .padding(8),
                 ]
-                    .spacing(15)
-                    .padding(10)
-                    .align_items(iced::Alignment::Center);
+                .spacing(15)
+                .padding(10)
+                .align_items(iced::Alignment::Center);
 
                 col = col.push(
                     container(book_row)
@@ -399,9 +402,9 @@ fn view_author_details(app: &BookshelfApp) -> Element<Message> {
             header,
             scrollable(container(book_list).width(Length::Fill)).height(Length::Fill)
         ]
-            .spacing(20)
-            .padding(20)
-            .into()
+        .spacing(20)
+        .padding(20)
+        .into()
     } else {
         // Fallback in case no author is selected
         view_author_list(app)
@@ -431,9 +434,9 @@ fn view_author_form(app: &BookshelfApp) -> Element<Message> {
         ]
         .spacing(10)
     ]
-        .spacing(10)
-        .padding(20)
-        .max_width(500);
+    .spacing(10)
+    .padding(20)
+    .max_width(500);
 
     container(form)
         .width(Length::Fill)
@@ -443,7 +446,11 @@ fn view_author_form(app: &BookshelfApp) -> Element<Message> {
 }
 
 // New function to display deletion confirmation
-fn view_delete_confirmation<'a>(app: &'a BookshelfApp, id: i32, name: &str) -> Element<'a, Message> {
+fn view_delete_confirmation<'a>(
+    app: &'a BookshelfApp,
+    id: i32,
+    name: &str,
+) -> Element<'a, Message> {
     let confirmation = column![
         text(format!("Are you sure you want to delete the author:")).size(20),
         text(format!("\"{}\"?", name))
@@ -451,9 +458,12 @@ fn view_delete_confirmation<'a>(app: &'a BookshelfApp, id: i32, name: &str) -> E
             .style(iced::Color::from_rgb(0.8, 0.0, 0.0)),
         text("This action cannot be undone.").size(16),
         if !app.author_books.is_empty() {
-            text(format!("Warning: This author has {} books associated with them.", app.author_books.len()))
-                .size(16)
-                .style(iced::Color::from_rgb(0.8, 0.6, 0.0))
+            text(format!(
+                "Warning: This author has {} books associated with them.",
+                app.author_books.len()
+            ))
+            .size(16)
+            .style(iced::Color::from_rgb(0.8, 0.6, 0.0))
         } else {
             text("")
         },
@@ -472,10 +482,10 @@ fn view_delete_confirmation<'a>(app: &'a BookshelfApp, id: i32, name: &str) -> E
         .spacing(20)
         .padding(20)
     ]
-        .spacing(20)
-        .padding(30)
-        .width(Length::Fill)
-        .align_items(iced::Alignment::Center);
+    .spacing(20)
+    .padding(30)
+    .width(Length::Fill)
+    .align_items(iced::Alignment::Center);
 
     container(confirmation)
         .width(Length::Fill)

@@ -1,12 +1,9 @@
-// src/ui/state.rs
 use crate::db;
 use crate::models::{AuthorModel, BookWithAuthor};
-use crate::ui::{
-    author_view, book_view, sort_books, Message, Mode, SortDirection, SortField, Tab,
-};
+use crate::ui::components::searchable_dropdown::SearchableDropdown;
+use crate::ui::{author_view, book_view, sort_books, Message, Mode, SortDirection, SortField, Tab};
 use iced::{executor, Application, Command, Element, Theme};
 
-/// Main application state struct
 pub struct BookshelfApp {
     // State
     pub current_tab: Tab,
@@ -31,14 +28,29 @@ pub struct BookshelfApp {
     pub book_finished_date: String,
     pub selected_author: Option<AuthorModel>,
 
+    // Author dropdown state
+    pub author_dropdown: SearchableDropdown<AuthorModel>,
+
     // Author state
     pub authors: Vec<AuthorModel>,
     pub current_author: Option<AuthorModel>,
     pub author_name: String,
-    pub author_books: Vec<BookWithAuthor>,  // Books by the current author
+    pub author_books: Vec<BookWithAuthor>, // Books by the current author
 
     // Error handling
     pub error: Option<String>,
+}
+
+impl BookshelfApp {
+    pub fn handle_toggle_author_dropdown(&mut self) -> Command<Message> {
+        self.author_dropdown.toggle();
+        Command::none()
+    }
+
+    pub fn handle_author_search_changed(&mut self, term: String) -> Command<Message> {
+        self.author_dropdown.search(term);
+        Command::none()
+    }
 }
 
 impl Application for BookshelfApp {
@@ -70,6 +82,7 @@ impl Application for BookshelfApp {
                 author_name: String::new(),
                 author_books: Vec::new(),
                 error: None,
+                author_dropdown: SearchableDropdown::new(Vec::new(), None),
             },
             Command::perform(async {}, |_| Message::Initialize),
         )
@@ -138,7 +151,13 @@ impl Application for BookshelfApp {
                 self.search_query = query;
                 Command::none()
             }
-
+            Message::ToggleAuthorDropdown => self.handle_toggle_author_dropdown(),
+            Message::AuthorSearchChanged(term) => self.handle_author_search_changed(term),
+            Message::BookAuthorSelected(author) => {
+                self.selected_author = Some(author.clone());
+                self.author_dropdown.select(author);
+                Command::none()
+            }
             Message::PerformSearch => {
                 if self.search_query.is_empty() {
                     self.is_searching = false;
@@ -247,8 +266,12 @@ impl Application for BookshelfApp {
             Message::AddAuthorMode => author_view::handle_add_author_mode(self),
             Message::EditAuthorMode(author) => author_view::handle_edit_author_mode(self, author),
             Message::ViewAuthorMode => author_view::handle_view_author_mode(self),
-            Message::ViewAuthorDetails(author) => author_view::handle_view_author_details(self, author),
-            Message::AuthorBooksLoaded(result) => author_view::handle_author_books_loaded(self, result),
+            Message::ViewAuthorDetails(author) => {
+                author_view::handle_view_author_details(self, author)
+            }
+            Message::AuthorBooksLoaded(result) => {
+                author_view::handle_author_books_loaded(self, result)
+            }
             Message::AuthorNameChanged(value) => {
                 author_view::handle_author_name_changed(self, value)
             }

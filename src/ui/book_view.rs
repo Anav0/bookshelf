@@ -1,6 +1,8 @@
 // src/ui/book_view.rs
 use crate::db;
 use crate::models::{AuthorModel, BookModel, BookWithAuthor, NewBook};
+use crate::ui::components::searchable_dropdown;
+use crate::ui::components::searchable_dropdown::SearchableDropdown;
 use crate::ui::{sort_books, BookshelfApp, Message, Mode, LIST_MAX_WIDTH};
 use chrono::{Local, NaiveDateTime};
 use iced::widget::{button, column, container, pick_list, row, scrollable, text, text_input};
@@ -237,7 +239,7 @@ pub fn view(app: &BookshelfApp) -> Element<Message> {
         Mode::View => view_book_list(app),
         Mode::Add | Mode::Edit => view_book_form(app),
         Mode::ConfirmDelete(id, title) => view_delete_confirmation(app, *id, title),
-        Mode::ViewDetails => view_book_list(app), // Fall back to book list view in this mode
+        Mode::ViewDetails => view_book_list(app),
     }
 }
 
@@ -375,13 +377,13 @@ fn view_book_form(app: &BookshelfApp) -> Element<Message> {
             .on_input(Message::BookFinishedDateChanged)
             .padding(10),
         text("Author:").size(16),
-        pick_list(
-            author_options,
-            app.selected_author.clone(),
-            Message::BookAuthorSelected
-        )
-        .placeholder("Select an author (optional)")
-        .padding(10),
+        // Use our custom searchable dropdown instead of pick_list
+        searchable_dropdown::view_author_dropdown(
+            &app.author_dropdown,
+            Message::ToggleAuthorDropdown,
+            |term| Message::AuthorSearchChanged(term),
+            |author| Message::BookAuthorSelected(author),
+        ),
         row![
             button("Save")
                 .on_press(Message::SaveBook)

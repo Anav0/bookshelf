@@ -1,4 +1,4 @@
-// src/ui/messages.rs
+// src/ui/messages.rs (additions for searchable dropdown)
 use crate::models::{AuthorModel, BookModel, BookWithAuthor};
 use std::fmt;
 
@@ -51,6 +51,10 @@ pub enum Message {
     DeleteAuthor(i32),
     CancelDeleteAuthor, // New message for cancel deletion
     AuthorDeleted(Result<usize, String>),
+
+    // Searchable Dropdown Messages
+    ToggleAuthorDropdown,
+    AuthorSearchChanged(String),
 
     Initialize,
     Error(String),
