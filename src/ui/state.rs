@@ -254,6 +254,10 @@ impl Application for BookshelfApp {
             }
             Message::SaveAuthor => author_view::handle_save_author(self),
             Message::AuthorSaved(result) => author_view::handle_author_saved(self, result),
+            Message::ConfirmDeleteAuthor(id, name) => {
+                author_view::handle_confirm_delete_author(self, id, name)
+            }
+            Message::CancelDeleteAuthor => author_view::handle_cancel_delete_author(self),
             Message::DeleteAuthor(id) => author_view::handle_delete_author(self, id),
             Message::AuthorDeleted(result) => author_view::handle_author_deleted(self, result),
 

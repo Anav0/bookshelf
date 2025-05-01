@@ -47,7 +47,9 @@ pub enum Message {
     AuthorNameChanged(String),
     SaveAuthor,
     AuthorSaved(Result<AuthorModel, String>),
+    ConfirmDeleteAuthor(i32, String), // New message for delete confirmation
     DeleteAuthor(i32),
+    CancelDeleteAuthor, // New message for cancel deletion
     AuthorDeleted(Result<usize, String>),
 
     Initialize,

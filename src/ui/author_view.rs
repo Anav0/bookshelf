@@ -5,6 +5,7 @@ use crate::ui::{BookshelfApp, Message, Mode, Tab};
 use iced::widget::{button, column, container, row, scrollable, text, text_input};
 use iced::{Application, Command, Element, Length};
 
+// Handler functions for author-related messages
 pub fn handle_load_authors(app: &mut BookshelfApp) -> Command<Message> {
     Command::perform(
         async {
@@ -133,6 +134,22 @@ pub fn handle_author_saved(
     }
 }
 
+// New handler for confirming deletion
+pub fn handle_confirm_delete_author(
+    app: &mut BookshelfApp,
+    id: i32,
+    name: String,
+) -> Command<Message> {
+    app.mode = Mode::ConfirmDelete(id, name);
+    Command::none()
+}
+
+// New handler for canceling deletion
+pub fn handle_cancel_delete_author(app: &mut BookshelfApp) -> Command<Message> {
+    app.mode = Mode::View;
+    Command::none()
+}
+
 pub fn handle_delete_author(app: &mut BookshelfApp, id: i32) -> Command<Message> {
     Command::perform(
         async move {
@@ -149,11 +166,13 @@ pub fn handle_author_deleted(
     app: &mut BookshelfApp,
     result: Result<usize, String>,
 ) -> Command<Message> {
+    app.mode = Mode::View; // Ensure we go back to view mode
+
     match result {
         Ok(_) => app.update(Message::LoadAuthors),
         Err(e) => {
             app.error = Some(e);
-            Command::none()
+            app.update(Message::LoadAuthors) // Always go back to author list even on error
         }
     }
 }
@@ -164,7 +183,7 @@ pub fn view(app: &BookshelfApp) -> Element<Message> {
         Mode::View => view_author_list(app),
         Mode::ViewDetails => view_author_details(app),
         Mode::Add | Mode::Edit => view_author_form(app),
-        Mode::ConfirmDelete(_, _) => view_author_list(app), // Fallback to list view
+        Mode::ConfirmDelete(id, ref name) => view_delete_confirmation(app, id, name),
     }
 }
 
@@ -195,7 +214,10 @@ fn view_author_list(app: &BookshelfApp) -> Element<Message> {
                     .on_press(Message::EditAuthorMode(author.clone()))
                     .style(iced::theme::Button::Secondary),
                 button("Delete")
-                    .on_press(Message::DeleteAuthor(author.Id))
+                    .on_press(Message::ConfirmDeleteAuthor(
+                        author.Id,
+                        author.Name.clone().unwrap_or_else(|| "Unnamed Author".to_string())
+                    ))
                     .style(iced::theme::Button::Destructive),
             ]
                 .spacing(10)
@@ -242,7 +264,10 @@ fn view_author_details(app: &BookshelfApp) -> Element<Message> {
             .style(iced::theme::Button::Primary);
 
         let delete_button = button("Delete Author")
-            .on_press(Message::DeleteAuthor(author.Id))
+            .on_press(Message::ConfirmDeleteAuthor(
+                author.Id,
+                author.Name.clone().unwrap_or_else(|| "Unnamed Author".to_string())
+            ))
             .style(iced::theme::Button::Destructive);
 
         let header = row![
@@ -347,5 +372,49 @@ fn view_author_form(app: &BookshelfApp) -> Element<Message> {
         .width(Length::Fill)
         .height(Length::Fill)
         .center_x()
+        .into()
+}
+
+// New function to display deletion confirmation
+fn view_delete_confirmation<'a>(app: &'a BookshelfApp, id: i32, name: &str) -> Element<'a, Message> {
+    let confirmation = column![
+        text(format!("Are you sure you want to delete the author:")).size(20),
+        text(format!("\"{}\"?", name))
+            .size(24)
+            .style(iced::Color::from_rgb(0.8, 0.0, 0.0)),
+        text("This action cannot be undone.").size(16),
+        if !app.author_books.is_empty() {
+            text(format!("Warning: This author has {} books associated with them.", app.author_books.len()))
+                .size(16)
+                .style(iced::Color::from_rgb(0.8, 0.6, 0.0))
+        } else {
+            text("")
+        },
+        row![
+            button("Cancel")
+                .on_press(Message::CancelDeleteAuthor)
+                .style(iced::theme::Button::Secondary)
+                .padding(10)
+                .width(Length::Fill),
+            button("Confirm Delete")
+                .on_press(Message::DeleteAuthor(id))
+                .style(iced::theme::Button::Destructive)
+                .padding(10)
+                .width(Length::Fill),
+        ]
+        .spacing(20)
+        .padding(20)
+    ]
+        .spacing(20)
+        .padding(30)
+        .width(Length::Fill)
+        .align_items(iced::Alignment::Center);
+
+    container(confirmation)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .center_x()
+        .center_y()
+        .style(iced::theme::Container::Box)
         .into()
 }
