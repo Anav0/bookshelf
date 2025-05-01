@@ -4,10 +4,14 @@ mod schema;
 mod ui;
 
 use crate::ui::BookshelfApp;
+use iced::futures::future::ok;
+use iced::window::icon::from_file_data;
 use iced::{window, Application, Settings};
 
 fn main() -> iced::Result {
     dotenv::dotenv().ok();
+
+    let icon = from_file_data(include_bytes!("assets/icon.png"), None).ok();
 
     BookshelfApp::run(Settings {
         window: window::Settings {
@@ -19,7 +23,7 @@ fn main() -> iced::Result {
             resizable: true,
             decorations: true,
             transparent: false,
-            icon: None,
+            icon,
             level: window::Level::Normal,
             platform_specific: window::PlatformSpecific::default(),
         },
