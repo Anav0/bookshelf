@@ -1,6 +1,6 @@
 // src/ui/author_view.rs
 use crate::db;
-use crate::models::{AuthorModel, BookWithAuthor, NewAuthor};
+use crate::models::{AuthorModel, BookWithAuthor, NewAuthor, ID};
 use crate::ui::components::searchable_dropdown::SearchableDropdown;
 use crate::ui::{BookshelfApp, Message, Mode};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column, Row};
@@ -17,8 +17,8 @@ struct BookStats {
 }
 
 // Function to calculate book statistics for all authors
-fn calculate_author_stats(books_with_author: &[BookWithAuthor]) -> HashMap<i32, BookStats> {
-    let mut stats: HashMap<i32, BookStats> = HashMap::new();
+fn calculate_author_stats(books_with_author: &[BookWithAuthor]) -> HashMap<ID, BookStats> {
+    let mut stats: HashMap<ID, BookStats> = HashMap::new();
 
     for pair in books_with_author {
         if let Some(author_id) = pair.book.AuthorFK {
@@ -174,7 +174,7 @@ pub fn handle_author_saved(
 // New handler for confirming deletion
 pub fn handle_confirm_delete_author(
     app: &mut BookshelfApp,
-    id: i32,
+    id: ID,
     name: String,
 ) -> iced::Task<Message> {
     app.mode = Mode::ConfirmDelete(id, name);
@@ -187,7 +187,8 @@ pub fn handle_cancel_delete_author(app: &mut BookshelfApp) -> iced::Task<Message
     iced::Task::none()
 }
 
-pub fn handle_delete_author(_: &mut BookshelfApp, id: i32) -> iced::Task<Message> {
+pub fn handle_delete_author(_: &mut BookshelfApp, id: ID) ->
+                                                         iced::Task<Message> {
     iced::Task::perform(
         async move {
             match db::delete_author(id) {
@@ -269,7 +270,7 @@ fn create_authors_list<'a>(app: &BookshelfApp) -> Column<Message> {
 }
 
 fn create_author_row<'a>(
-    author_stats: &HashMap<i32, BookStats>,
+    author_stats: &HashMap<ID, BookStats>,
     author: &AuthorModel,
 ) -> Row<'a, Message> {
     let author_name = author
@@ -459,7 +460,7 @@ fn view_author_form(app: &BookshelfApp) -> Element<Message> {
 // New function to display deletion confirmation
 fn view_delete_confirmation<'a>(
     app: &'a BookshelfApp,
-    id: i32,
+    id: ID,
     name: &str,
 ) -> Element<'a, Message> {
     let confirmation = column![

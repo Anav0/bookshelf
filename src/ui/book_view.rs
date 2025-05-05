@@ -1,6 +1,6 @@
 // src/ui/book_view.rs
 use crate::db;
-use crate::models::{BookModel, BookWithAuthor, NewBook};
+use crate::models::{BookModel, BookWithAuthor, NewBook, ID};
 use crate::ui::components::searchable_dropdown;
 use crate::ui::{sort_books, BookshelfApp, Message, Mode, LIST_MAX_WIDTH};
 use chrono::{Local, NaiveDateTime};
@@ -167,7 +167,7 @@ pub fn handle_book_saved(
 // New handler for confirming deletion
 pub fn handle_confirm_delete_book(
     app: &mut BookshelfApp,
-    id: i32,
+    id: ID,
     title: String,
 ) -> iced::Task<Message> {
     app.mode = Mode::ConfirmDelete(id, title);
@@ -180,7 +180,7 @@ pub fn handle_cancel_delete_book(app: &mut BookshelfApp) -> iced::Task<Message> 
     iced::Task::none()
 }
 
-pub fn handle_delete_book(_: &mut BookshelfApp, id: i32) -> iced::Task<Message> {
+pub fn handle_delete_book(_: &mut BookshelfApp, id: ID) -> iced::Task<Message> {
     iced::Task::perform(
         async move {
             match db::delete_book(id) {
@@ -413,7 +413,7 @@ fn view_book_form(app: &BookshelfApp) -> Element<Message> {
 // New function to display deletion confirmation
 fn view_delete_confirmation<'a>(
     _: &'a BookshelfApp,
-    id: i32,
+    id: ID,
     title: &'a str,
 ) -> Element<'a, Message> {
     // fn view_delete_confirmation(app: &BookshelfApp, id: i32, title: &str) -> Element<Message> {

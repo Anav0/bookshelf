@@ -4,11 +4,13 @@ use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
+pub type ID = i32;
+
 #[derive(Debug, Clone, Queryable, Selectable, Identifiable, Serialize, Deserialize)]
 #[diesel(table_name = Author)]
 #[diesel(primary_key(Id))]
 pub struct AuthorModel {
-    pub Id: i32,
+    pub Id: ID,
     pub Name: Option<String>,
 }
 
@@ -28,13 +30,13 @@ pub struct NewAuthor {
 #[derive(Debug, Clone, Queryable, Selectable, Identifiable, Serialize, Deserialize)]
 #[diesel(table_name = Books)]
 pub struct BookModel {
+    pub id: ID,
     pub title: String,
     pub price: Option<f32>,
     pub bought: Option<NaiveDateTime>,
     pub finished: Option<NaiveDateTime>,
     pub added: Option<NaiveDateTime>,
-    pub AuthorFK: Option<i32>,
-    pub id: i32,
+    pub AuthorFK: Option<ID>,
 }
 
 impl Eq for BookModel {}
@@ -52,7 +54,7 @@ pub struct NewBook {
     pub bought: Option<NaiveDateTime>,
     pub finished: Option<NaiveDateTime>,
     pub added: Option<NaiveDateTime>,
-    pub AuthorFK: Option<i32>,
+    pub AuthorFK: Option<ID>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,6 +66,12 @@ pub struct BookWithAuthor {
 // Implement Display for AuthorModel for use in the pick_list
 impl std::fmt::Display for AuthorModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.Name.clone().unwrap_or_else(|| "Unnamed Author".to_string()))
+        write!(
+            f,
+            "{}",
+            self.Name
+                .clone()
+                .unwrap_or_else(|| "Unnamed Author".to_string())
+        )
     }
 }

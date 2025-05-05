@@ -11,7 +11,7 @@ use thiserror::Error;
 use r2d2;
 use diesel::r2d2::ConnectionManager;
 
-use crate::models::{AuthorModel, BookModel, BookWithAuthor, NewAuthor, NewBook};
+use crate::models::{AuthorModel, BookModel, BookWithAuthor, NewAuthor, NewBook, ID};
 use crate::schema::{Author, Books};
 
 pub type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
@@ -66,7 +66,7 @@ pub fn get_authors() -> Result<Vec<AuthorModel>, DbError> {
     Ok(authors)
 }
 
-pub fn get_author(id: i32) -> Result<AuthorModel, DbError> {
+pub fn get_author(id: ID) -> Result<AuthorModel, DbError> {
     let mut conn = get_connection()?;
     let author = Author::table
         .find(id)
@@ -84,7 +84,7 @@ pub fn create_author(new_author: &NewAuthor) -> Result<AuthorModel, DbError> {
     Ok(author)
 }
 
-pub fn update_author(id: i32, author: &NewAuthor) -> Result<AuthorModel, DbError> {
+pub fn update_author(id: ID, author: &NewAuthor) -> Result<AuthorModel, DbError> {
     let mut conn = get_connection()?;
     let author = diesel::update(Author::table.find(id))
         .set(author)
@@ -93,7 +93,7 @@ pub fn update_author(id: i32, author: &NewAuthor) -> Result<AuthorModel, DbError
     Ok(author)
 }
 
-pub fn delete_author(id: i32) -> Result<usize, DbError> {
+pub fn delete_author(id: ID) -> Result<usize, DbError> {
     let mut conn = get_connection()?;
     let count = diesel::delete(Author::table.find(id))
         .execute(&mut conn)?;
@@ -126,7 +126,7 @@ pub fn get_books() -> Result<Vec<BookWithAuthor>, DbError> {
 }
 
 // New function to get books by author
-pub fn get_books_by_author(author_id: i32) -> Result<Vec<BookWithAuthor>, DbError> {
+pub fn get_books_by_author(author_id: ID) -> Result<Vec<BookWithAuthor>, DbError> {
     let mut conn = get_connection()?;
 
     // Query books that have this author's ID as AuthorFK
@@ -150,7 +150,7 @@ pub fn get_books_by_author(author_id: i32) -> Result<Vec<BookWithAuthor>, DbErro
     Ok(books_with_author)
 }
 
-pub fn get_book(id: i32) -> Result<BookWithAuthor, DbError> {
+pub fn get_book(id: ID) -> Result<BookWithAuthor, DbError> {
     let mut conn = get_connection()?;
     let book = Books::table
         .find(id)
@@ -178,7 +178,7 @@ pub fn create_book(new_book: &NewBook) -> Result<BookModel, DbError> {
     Ok(book)
 }
 
-pub fn update_book(id: i32, book: &NewBook) -> Result<BookModel, DbError> {
+pub fn update_book(id: ID, book: &NewBook) -> Result<BookModel, DbError> {
     let mut conn = get_connection()?;
     let book = diesel::update(Books::table.find(id))
         .set(book)
@@ -187,7 +187,7 @@ pub fn update_book(id: i32, book: &NewBook) -> Result<BookModel, DbError> {
     Ok(book)
 }
 
-pub fn delete_book(id: i32) -> Result<usize, DbError> {
+pub fn delete_book(id: ID) -> Result<usize, DbError> {
     let mut conn = get_connection()?;
     let count = diesel::delete(Books::table.find(id))
         .execute(&mut conn)?;

@@ -1,5 +1,5 @@
 // src/ui/messages.rs (additions for searchable dropdown)
-use crate::models::{AuthorModel, BookModel, BookWithAuthor};
+use crate::models::{AuthorModel, BookModel, BookWithAuthor, ID};
 use std::fmt;
 
 /// Defines all the possible messages that can be sent in the application
@@ -31,8 +31,8 @@ pub enum Message {
     BookAuthorSelected(AuthorModel),
     SaveBook,
     BookSaved(Result<BookModel, String>),
-    ConfirmDeleteBook(i32, String), // Add confirmation step
-    DeleteBook(i32),
+    ConfirmDeleteBook(ID, String), // Add confirmation step
+    DeleteBook(ID),
     CancelDeleteBook,
     BookDeleted(Result<usize, String>),
 
@@ -47,8 +47,8 @@ pub enum Message {
     AuthorNameChanged(String),
     SaveAuthor,
     AuthorSaved(Result<AuthorModel, String>),
-    ConfirmDeleteAuthor(i32, String), // New message for delete confirmation
-    DeleteAuthor(i32),
+    ConfirmDeleteAuthor(ID, String), // New message for delete confirmation
+    DeleteAuthor(ID),
     CancelDeleteAuthor, // New message for cancel deletion
     AuthorDeleted(Result<usize, String>),
 
@@ -67,7 +67,7 @@ pub enum Mode {
     ViewDetails,  // Mode for viewing author details
     Add,
     Edit,
-    ConfirmDelete(i32, String), // ID and name of item to delete
+    ConfirmDelete(ID, String), // ID and name of item to delete
 }
 
 /// Defines the available tabs in the application
