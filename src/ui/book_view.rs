@@ -1,16 +1,15 @@
 // src/ui/book_view.rs
 use crate::db;
-use crate::models::{AuthorModel, BookModel, BookWithAuthor, NewBook};
+use crate::models::{BookModel, BookWithAuthor, NewBook};
 use crate::ui::components::searchable_dropdown;
-use crate::ui::components::searchable_dropdown::SearchableDropdown;
 use crate::ui::{sort_books, BookshelfApp, Message, Mode, LIST_MAX_WIDTH};
 use chrono::{Local, NaiveDateTime};
-use iced::widget::{button, column, container, pick_list, row, scrollable, text, text_input};
-use iced::{Application, Command, Element, Length};
+use iced::widget::{button, column, container, row, scrollable, text, text_input};
+use iced::{Element, Length};
 
 // Handler functions for book-related messages
-pub fn handle_load_books(app: &mut BookshelfApp) -> Command<Message> {
-    Command::perform(
+pub fn handle_load_books(_: &mut BookshelfApp) -> iced::Task<Message> {
+    iced::Task::perform(
         async {
             match db::get_books() {
                 Ok(books) => Ok(books),
@@ -21,7 +20,7 @@ pub fn handle_load_books(app: &mut BookshelfApp) -> Command<Message> {
     )
 }
 
-pub fn handle_add_book_mode(app: &mut BookshelfApp) -> Command<Message> {
+pub fn handle_add_book_mode(app: &mut BookshelfApp) -> iced::Task<Message> {
     app.mode = Mode::Add;
     app.current_book = None;
     app.book_title = String::new();
@@ -30,10 +29,10 @@ pub fn handle_add_book_mode(app: &mut BookshelfApp) -> Command<Message> {
     app.book_finished_date = String::new();
     app.selected_author = None;
 
-    Command::perform(async {}, |_| Message::LoadAuthors)
+    iced::Task::perform(async {}, |_| Message::LoadAuthors)
 }
 
-pub fn handle_edit_book_mode(app: &mut BookshelfApp, book: BookWithAuthor) -> Command<Message> {
+pub fn handle_edit_book_mode(app: &mut BookshelfApp, book: BookWithAuthor) -> iced::Task<Message> {
     app.mode = Mode::Edit;
     app.current_book = Some(book.clone());
     app.book_title = book.book.title;
@@ -48,48 +47,43 @@ pub fn handle_edit_book_mode(app: &mut BookshelfApp, book: BookWithAuthor) -> Co
         .map_or_else(String::new, |d| d.format("%Y-%m-%d %H:%M:%S").to_string());
     app.selected_author = book.author;
 
-    Command::perform(async {}, |_| Message::LoadAuthors)
+    iced::Task::perform(async {}, |_| Message::LoadAuthors)
 }
 
-pub fn handle_view_book_mode(app: &mut BookshelfApp) -> Command<Message> {
+pub fn handle_view_book_mode(app: &mut BookshelfApp) -> iced::Task<Message> {
     app.mode = Mode::View;
     app.current_book = None;
 
     app.update(Message::LoadBooks)
 }
 
-pub fn handle_book_title_changed(app: &mut BookshelfApp, value: String) -> Command<Message> {
+pub fn handle_book_title_changed(app: &mut BookshelfApp, value: String) -> iced::Task<Message> {
     app.book_title = value;
-    Command::none()
+    iced::Task::none()
 }
 
-pub fn handle_book_price_changed(app: &mut BookshelfApp, value: String) -> Command<Message> {
+pub fn handle_book_price_changed(app: &mut BookshelfApp, value: String) -> iced::Task<Message> {
     app.book_price = value;
-    Command::none()
+    iced::Task::none()
 }
 
-pub fn handle_book_bought_date_changed(app: &mut BookshelfApp, value: String) -> Command<Message> {
+pub fn handle_book_bought_date_changed(
+    app: &mut BookshelfApp,
+    value: String,
+) -> iced::Task<Message> {
     app.book_bought_date = value;
-    Command::none()
+    iced::Task::none()
 }
 
 pub fn handle_book_finished_date_changed(
     app: &mut BookshelfApp,
     value: String,
-) -> Command<Message> {
+) -> iced::Task<Message> {
     app.book_finished_date = value;
-    Command::none()
+    iced::Task::none()
 }
 
-pub fn handle_book_author_selected(
-    app: &mut BookshelfApp,
-    author: AuthorModel,
-) -> Command<Message> {
-    app.selected_author = Some(author);
-    Command::none()
-}
-
-pub fn handle_save_book(app: &mut BookshelfApp) -> Command<Message> {
+pub fn handle_save_book(app: &mut BookshelfApp) -> iced::Task<Message> {
     let price = if app.book_price.is_empty() {
         None
     } else {
@@ -97,7 +91,7 @@ pub fn handle_save_book(app: &mut BookshelfApp) -> Command<Message> {
             Ok(p) => Some(p),
             Err(_) => {
                 app.error = Some("Invalid price format".to_string());
-                return Command::none();
+                return iced::Task::none();
             }
         }
     };
@@ -135,7 +129,7 @@ pub fn handle_save_book(app: &mut BookshelfApp) -> Command<Message> {
         AuthorFK: app.selected_author.as_ref().map(|a| a.Id),
     };
 
-    Command::perform(
+    iced::Task::perform(
         async move {
             // Use book_id that we extracted before the closure
             if let Some(id) = book_id {
@@ -157,7 +151,7 @@ pub fn handle_save_book(app: &mut BookshelfApp) -> Command<Message> {
 pub fn handle_book_saved(
     app: &mut BookshelfApp,
     result: Result<BookModel, String>,
-) -> Command<Message> {
+) -> iced::Task<Message> {
     match result {
         Ok(_) => {
             app.mode = Mode::View;
@@ -165,7 +159,7 @@ pub fn handle_book_saved(
         }
         Err(e) => {
             app.error = Some(e);
-            Command::none()
+            iced::Task::none()
         }
     }
 }
@@ -175,19 +169,19 @@ pub fn handle_confirm_delete_book(
     app: &mut BookshelfApp,
     id: i32,
     title: String,
-) -> Command<Message> {
+) -> iced::Task<Message> {
     app.mode = Mode::ConfirmDelete(id, title);
-    Command::none()
+    iced::Task::none()
 }
 
 // New handler for canceling deletion
-pub fn handle_cancel_delete_book(app: &mut BookshelfApp) -> Command<Message> {
+pub fn handle_cancel_delete_book(app: &mut BookshelfApp) -> iced::Task<Message> {
     app.mode = Mode::View;
-    Command::none()
+    iced::Task::none()
 }
 
-pub fn handle_delete_book(app: &mut BookshelfApp, id: i32) -> Command<Message> {
-    Command::perform(
+pub fn handle_delete_book(_: &mut BookshelfApp, id: i32) -> iced::Task<Message> {
+    iced::Task::perform(
         async move {
             match db::delete_book(id) {
                 Ok(count) => Ok(count),
@@ -201,7 +195,7 @@ pub fn handle_delete_book(app: &mut BookshelfApp, id: i32) -> Command<Message> {
 pub fn handle_books_loaded(
     app: &mut BookshelfApp,
     result: Result<Vec<BookWithAuthor>, String>,
-) -> Command<Message> {
+) -> iced::Task<Message> {
     match result {
         Ok(books) => {
             app.books = books;
@@ -215,13 +209,13 @@ pub fn handle_books_loaded(
             app.error = Some(e);
         }
     }
-    Command::none()
+    iced::Task::none()
 }
 
 pub fn handle_book_deleted(
     app: &mut BookshelfApp,
     result: Result<usize, String>,
-) -> Command<Message> {
+) -> iced::Task<Message> {
     app.mode = Mode::View; // Ensure we go back to view mode
 
     match result {
@@ -246,7 +240,7 @@ pub fn view(app: &BookshelfApp) -> Element<Message> {
 fn view_book_list(app: &BookshelfApp) -> Element<Message> {
     let add_button = button("Add New Book")
         .on_press(Message::AddBookMode)
-        .style(iced::theme::Button::Primary);
+        .style(button::primary);
 
     // Determine whether to show all books or filtered search results
     let books_to_display = if app.is_searching {
@@ -309,24 +303,24 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
                 .width(Length::Fill),
                 button("Edit")
                     .on_press(Message::EditBookMode(book.clone()))
-                    .style(iced::theme::Button::Secondary)
+                    .style(button::secondary)
                     .padding(8),
                 button("Delete")
                     .on_press(Message::ConfirmDeleteBook(
                         book.book.id,
                         book.book.title.clone()
                     ))
-                    .style(iced::theme::Button::Destructive)
+                    .style(button::danger)
                     .padding(8),
             ]
             .spacing(15)
             .padding(10)
-            .align_items(iced::Alignment::Center);
+            .align_y(iced::Alignment::Center);
 
             col = col.push(
                 container(book_row)
                     .padding(10)
-                    .style(iced::theme::Container::Box),
+                    .style(container::bordered_box),
             );
         }
 
@@ -336,7 +330,7 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
     column![
         row![
             text(search_status).size(24),
-            iced::widget::horizontal_space(Length::Fill),
+            iced::widget::horizontal_space(),
             add_button
         ]
         .padding(15)
@@ -387,10 +381,10 @@ fn view_book_form(app: &BookshelfApp) -> Element<Message> {
         row![
             button("Save")
                 .on_press(Message::SaveBook)
-                .style(iced::theme::Button::Primary),
+                .style(button::primary),
             button("Cancel")
                 .on_press(Message::ViewBookMode)
-                .style(iced::theme::Button::Secondary),
+                .style(button::secondary),
         ]
         .spacing(10)
     ]
@@ -401,32 +395,30 @@ fn view_book_form(app: &BookshelfApp) -> Element<Message> {
     container(form)
         .width(Length::Fill)
         .height(Length::Fill)
-        .center_x()
+        .center_x(Length::Fill)
         .into()
 }
 
 // New function to display deletion confirmation
 fn view_delete_confirmation<'a>(
-    app: &'a BookshelfApp,
+    _: &'a BookshelfApp,
     id: i32,
     title: &'a str,
 ) -> Element<'a, Message> {
     // fn view_delete_confirmation(app: &BookshelfApp, id: i32, title: &str) -> Element<Message> {
     let confirmation = column![
         text(format!("Are you sure you want to delete the book:")).size(20),
-        text(format!("\"{}\"?", title))
-            .size(24)
-            .style(iced::Color::from_rgb(0.8, 0.0, 0.0)),
+        text(format!("\"{}\"?", title)).size(24),
         text("This action cannot be undone.").size(16),
         row![
             button("Cancel")
                 .on_press(Message::CancelDeleteBook)
-                .style(iced::theme::Button::Secondary)
+                .style(button::secondary)
                 .padding(10)
                 .width(Length::Fill),
             button("Confirm Delete")
                 .on_press(Message::DeleteBook(id))
-                .style(iced::theme::Button::Destructive)
+                .style(button::danger)
                 .padding(10)
                 .width(Length::Fill),
         ]
@@ -436,13 +428,13 @@ fn view_delete_confirmation<'a>(
     .spacing(20)
     .padding(30)
     .width(Length::Fill)
-    .align_items(iced::Alignment::Center);
+    .align_x(iced::Alignment::Center);
 
     container(confirmation)
         .width(Length::Fill)
         .height(Length::Fill)
-        .center_x()
-        .center_y()
-        .style(iced::theme::Container::Box)
+        .center_x(Length::Fill)
+        .center_y(Length::Fill)
+        .style(container::bordered_box)
         .into()
 }

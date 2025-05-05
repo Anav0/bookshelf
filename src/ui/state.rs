@@ -2,7 +2,6 @@ use crate::db;
 use crate::models::{AuthorModel, BookWithAuthor};
 use crate::ui::components::searchable_dropdown::SearchableDropdown;
 use crate::ui::{author_view, book_view, sort_books, Message, Mode, SortDirection, SortField, Tab};
-use iced::{executor, Application, Command, Element, Theme};
 
 pub struct BookshelfApp {
     // State
@@ -42,67 +41,53 @@ pub struct BookshelfApp {
 }
 
 impl BookshelfApp {
-    pub fn handle_toggle_author_dropdown(&mut self) -> Command<Message> {
+    pub fn new() -> Self {
+        Self {
+            current_tab: Tab::Books,
+            mode: Mode::View,
+            sort_field: SortField::Title,
+            sort_direction: SortDirection::Ascending,
+            search_query: String::new(),
+            search_term_displayed: String::new(),
+            is_searching: false,
+            filtered_books: None,
+            books: Vec::new(),
+            current_book: None,
+            book_title: String::new(),
+            book_price: String::new(),
+            book_bought_date: String::new(),
+            book_finished_date: String::new(),
+            selected_author: None,
+            authors: Vec::new(),
+            current_author: None,
+            author_name: String::new(),
+            author_books: Vec::new(),
+            error: None,
+            author_dropdown: SearchableDropdown::new(Vec::new(), None),
+        }
+    }
+
+    pub fn handle_toggle_author_dropdown(&mut self) -> iced::Task<Message> {
         self.author_dropdown.toggle();
-        Command::none()
+        iced::Task::none()
     }
 
-    pub fn handle_author_search_changed(&mut self, term: String) -> Command<Message> {
+    pub fn handle_author_search_changed(&mut self, term: String) -> iced::Task<Message> {
         self.author_dropdown.search(term);
-        Command::none()
-    }
-}
-
-impl Application for BookshelfApp {
-    type Executor = executor::Default;
-    type Message = Message;
-    type Theme = Theme;
-    type Flags = ();
-
-    fn new(_flags: ()) -> (Self, Command<Message>) {
-        (
-            Self {
-                current_tab: Tab::Books,
-                mode: Mode::View,
-                sort_field: SortField::Title,
-                sort_direction: SortDirection::Ascending,
-                search_query: String::new(),
-                search_term_displayed: String::new(),
-                is_searching: false,
-                filtered_books: None,
-                books: Vec::new(),
-                current_book: None,
-                book_title: String::new(),
-                book_price: String::new(),
-                book_bought_date: String::new(),
-                book_finished_date: String::new(),
-                selected_author: None,
-                authors: Vec::new(),
-                current_author: None,
-                author_name: String::new(),
-                author_books: Vec::new(),
-                error: None,
-                author_dropdown: SearchableDropdown::new(Vec::new(), None),
-            },
-            Command::perform(async {}, |_| Message::Initialize),
-        )
+        iced::Task::none()
     }
 
-    fn title(&self) -> String {
-        String::from("Bookshelf Manager")
-    }
-
-    fn update(&mut self, message: Message) -> Command<Message> {
+    pub fn update(&mut self, message: Message) -> iced::Task<Message> {
         match message {
             Message::Initialize => {
                 if let Err(e) = db::initialize_pool() {
                     self.error = Some(format!("Failed to initialize database: {}", e));
-                    return Command::none();
+                    return iced::Task::none();
                 }
 
-                return Command::batch(vec![
-                    Command::perform(async {}, |_| Message::LoadBooks),
-                    Command::perform(async {}, |_| Message::LoadAuthors),
+                return iced::Task::batch(vec![
+                    iced::Task::perform(async {}, |_| Message::LoadBooks),
+                    iced::Task::perform(async {}, |_| Message::LoadAuthors),
                 ]);
             }
 
@@ -115,20 +100,20 @@ impl Application for BookshelfApp {
                 self.filtered_books = None;
 
                 match tab {
-                    Tab::Books => return self.update(Message::LoadBooks),
-                    Tab::Authors => return self.update(Message::LoadAuthors),
+                    Tab::Books => self.update(Message::LoadBooks),
+                    Tab::Authors => self.update(Message::LoadAuthors),
                 }
             }
 
             // Sorting messages
             Message::SortFieldSelected(field) => {
                 self.sort_field = field;
-                Command::none()
+                self.update(Message::ApplySorting)
             }
 
             Message::SortDirectionSelected(direction) => {
                 self.sort_direction = direction;
-                Command::none()
+                self.update(Message::ApplySorting)
             }
 
             Message::ApplySorting => {
@@ -143,26 +128,26 @@ impl Application for BookshelfApp {
                     sort_books(books, &self.sort_field, &self.sort_direction);
                 }
 
-                Command::none()
+                iced::Task::none()
             }
 
             // Search messages
             Message::SearchQueryChanged(query) => {
                 self.search_query = query;
-                Command::none()
+                iced::Task::none()
             }
             Message::ToggleAuthorDropdown => self.handle_toggle_author_dropdown(),
             Message::AuthorSearchChanged(term) => self.handle_author_search_changed(term),
             Message::BookAuthorSelected(author) => {
                 self.selected_author = Some(author.clone());
                 self.author_dropdown.select(author);
-                Command::none()
+                iced::Task::none()
             }
             Message::PerformSearch => {
                 if self.search_query.is_empty() {
                     self.is_searching = false;
                     self.filtered_books = None;
-                    return Command::none();
+                    return iced::Task::none();
                 }
 
                 self.is_searching = true;
@@ -216,7 +201,7 @@ impl Application for BookshelfApp {
                     return self.update(Message::ApplySorting);
                 }
 
-                Command::none()
+                iced::Task::none()
             }
 
             Message::ClearSearch => {
@@ -224,7 +209,7 @@ impl Application for BookshelfApp {
                 self.search_term_displayed = String::new();
                 self.is_searching = false;
                 self.filtered_books = None;
-                Command::none()
+                iced::Task::none()
             }
 
             // Book messages handled in the book module
@@ -233,7 +218,7 @@ impl Application for BookshelfApp {
                 let command = book_view::handle_books_loaded(self, result);
                 // Apply the current sorting after loading books
                 if !self.books.is_empty() {
-                    self.update(Message::ApplySorting);
+                    let _ = self.update(Message::ApplySorting);
                 }
                 command
             }
@@ -247,9 +232,6 @@ impl Application for BookshelfApp {
             }
             Message::BookFinishedDateChanged(value) => {
                 book_view::handle_book_finished_date_changed(self, value)
-            }
-            Message::BookAuthorSelected(author) => {
-                book_view::handle_book_author_selected(self, author)
             }
             Message::SaveBook => book_view::handle_save_book(self),
             Message::BookSaved(result) => book_view::handle_book_saved(self, result),
@@ -286,12 +268,12 @@ impl Application for BookshelfApp {
 
             Message::Error(error) => {
                 self.error = Some(error);
-                Command::none()
+                iced::Task::none()
             }
         }
     }
 
-    fn view(&self) -> Element<Message> {
+    pub fn view(&self) -> iced::Element<'_, Message> {
         crate::ui::common::view(self)
     }
 }

@@ -3,7 +3,7 @@ use crate::ui::book_view;
 use crate::ui::{author_view, LIST_PADDING, LIST_SPACING};
 use crate::ui::{BookshelfApp, Message, SortDirection, SortField, Tab};
 use iced::widget::{button, column, container, pick_list, row, text, text_input};
-use iced::{Color, Element, Length};
+use iced::{Element, Length};
 
 pub fn view(app: &BookshelfApp) -> Element<Message> {
     // Tabs navigation
@@ -11,16 +11,16 @@ pub fn view(app: &BookshelfApp) -> Element<Message> {
         button(text("Books").size(20))
             .on_press(Message::TabSelected(Tab::Books))
             .style(if matches!(app.current_tab, Tab::Books) {
-                iced::theme::Button::Primary
+                button::primary
             } else {
-                iced::theme::Button::Secondary
+                button::secondary
             }),
         button(text("Authors").size(20))
             .on_press(Message::TabSelected(Tab::Authors))
             .style(if matches!(app.current_tab, Tab::Authors) {
-                iced::theme::Button::Primary
+                button::primary
             } else {
-                iced::theme::Button::Secondary
+                button::secondary
             }),
     ]
     .spacing(LIST_SPACING)
@@ -28,7 +28,7 @@ pub fn view(app: &BookshelfApp) -> Element<Message> {
 
     // Error messages
     let error_message = if let Some(error) = &app.error {
-        container(text(error).style(Color::from_rgb(0.8, 0.0, 0.0)).size(14))
+        container(text(error).size(14))
             .padding(10)
             .width(Length::Fill)
     } else {
@@ -50,16 +50,16 @@ pub fn view(app: &BookshelfApp) -> Element<Message> {
                         .width(Length::Fill),
                     button("Search")
                         .on_press(Message::PerformSearch)
-                        .style(iced::theme::Button::Primary)
+                        .style(button::primary)
                         .padding(8),
                     if !app.search_query.is_empty() {
                         button("Clear")
                             .on_press(Message::ClearSearch)
-                            .style(iced::theme::Button::Secondary)
+                            .style(button::secondary)
                             .padding(8)
                     } else {
                         button("Clear")
-                            .style(iced::theme::Button::Secondary)
+                            .style(button::secondary)
                             .padding(8)
                     }
                 ]

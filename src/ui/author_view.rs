@@ -2,9 +2,10 @@
 use crate::db;
 use crate::models::{AuthorModel, BookWithAuthor, NewAuthor};
 use crate::ui::components::searchable_dropdown::SearchableDropdown;
-use crate::ui::{BookshelfApp, Message, Mode, Tab};
+use crate::ui::{BookshelfApp, Message, Mode};
 use iced::widget::{button, column, container, row, scrollable, text, text_input};
-use iced::{Application, Command, Element, Length};
+use iced::Fill;
+use iced::{Element, Length};
 use std::collections::HashMap;
 
 // Book statistics struct
@@ -38,8 +39,8 @@ fn calculate_author_stats(books_with_author: &[BookWithAuthor]) -> HashMap<i32, 
 }
 
 // Handler functions for author-related messages
-pub fn handle_load_authors(app: &mut BookshelfApp) -> Command<Message> {
-    Command::perform(
+pub fn handle_load_authors(_: &mut BookshelfApp) -> iced::Task<Message> {
+    iced::Task::perform(
         async {
             match db::get_authors() {
                 Ok(authors) => Ok(authors),
@@ -53,7 +54,7 @@ pub fn handle_load_authors(app: &mut BookshelfApp) -> Command<Message> {
 pub fn handle_authors_loaded(
     app: &mut BookshelfApp,
     result: Result<Vec<AuthorModel>, String>,
-) -> Command<Message> {
+) -> iced::Task<Message> {
     match result {
         Ok(authors) => {
             app.authors = authors.clone();
@@ -63,24 +64,24 @@ pub fn handle_authors_loaded(
             app.error = Some(e);
         }
     }
-    Command::none()
+    iced::Task::none()
 }
 
-pub fn handle_add_author_mode(app: &mut BookshelfApp) -> Command<Message> {
+pub fn handle_add_author_mode(app: &mut BookshelfApp) -> iced::Task<Message> {
     app.mode = Mode::Add;
     app.current_author = None;
     app.author_name = String::new();
-    Command::none()
+    iced::Task::none()
 }
 
-pub fn handle_edit_author_mode(app: &mut BookshelfApp, author: AuthorModel) -> Command<Message> {
+pub fn handle_edit_author_mode(app: &mut BookshelfApp, author: AuthorModel) -> iced::Task<Message> {
     app.mode = Mode::Edit;
     app.current_author = Some(author.clone());
     app.author_name = author.Name.unwrap_or_default();
-    Command::none()
+    iced::Task::none()
 }
 
-pub fn handle_view_author_mode(app: &mut BookshelfApp) -> Command<Message> {
+pub fn handle_view_author_mode(app: &mut BookshelfApp) -> iced::Task<Message> {
     app.mode = Mode::View;
     app.current_author = None;
     app.author_books = Vec::new();
@@ -88,12 +89,15 @@ pub fn handle_view_author_mode(app: &mut BookshelfApp) -> Command<Message> {
     app.update(Message::LoadAuthors)
 }
 
-pub fn handle_view_author_details(app: &mut BookshelfApp, author: AuthorModel) -> Command<Message> {
+pub fn handle_view_author_details(
+    app: &mut BookshelfApp,
+    author: AuthorModel,
+) -> iced::Task<Message> {
     app.mode = Mode::ViewDetails;
     app.current_author = Some(author.clone());
 
     // Load books by this author
-    Command::perform(
+    iced::Task::perform(
         async move {
             match db::get_books_by_author(author.Id) {
                 Ok(books) => Ok(books),
@@ -107,7 +111,7 @@ pub fn handle_view_author_details(app: &mut BookshelfApp, author: AuthorModel) -
 pub fn handle_author_books_loaded(
     app: &mut BookshelfApp,
     result: Result<Vec<BookWithAuthor>, String>,
-) -> Command<Message> {
+) -> iced::Task<Message> {
     match result {
         Ok(books) => {
             app.author_books = books;
@@ -116,15 +120,15 @@ pub fn handle_author_books_loaded(
             app.error = Some(e);
         }
     }
-    Command::none()
+    iced::Task::none()
 }
 
-pub fn handle_author_name_changed(app: &mut BookshelfApp, value: String) -> Command<Message> {
+pub fn handle_author_name_changed(app: &mut BookshelfApp, value: String) -> iced::Task<Message> {
     app.author_name = value;
-    Command::none()
+    iced::Task::none()
 }
 
-pub fn handle_save_author(app: &mut BookshelfApp) -> Command<Message> {
+pub fn handle_save_author(app: &mut BookshelfApp) -> iced::Task<Message> {
     let new_author = NewAuthor {
         Name: Some(app.author_name.clone()),
     };
@@ -132,7 +136,7 @@ pub fn handle_save_author(app: &mut BookshelfApp) -> Command<Message> {
     // Extract author_id outside the closure if we're in edit mode
     let author_id = app.current_author.as_ref().map(|author| author.Id);
 
-    Command::perform(
+    iced::Task::perform(
         async move {
             // Use author_id that we extracted before the closure
             if let Some(id) = author_id {
@@ -154,7 +158,7 @@ pub fn handle_save_author(app: &mut BookshelfApp) -> Command<Message> {
 pub fn handle_author_saved(
     app: &mut BookshelfApp,
     result: Result<AuthorModel, String>,
-) -> Command<Message> {
+) -> iced::Task<Message> {
     match result {
         Ok(_) => {
             app.mode = Mode::View;
@@ -162,7 +166,7 @@ pub fn handle_author_saved(
         }
         Err(e) => {
             app.error = Some(e);
-            Command::none()
+            iced::Task::none()
         }
     }
 }
@@ -172,19 +176,20 @@ pub fn handle_confirm_delete_author(
     app: &mut BookshelfApp,
     id: i32,
     name: String,
-) -> Command<Message> {
+) -> iced::Task<Message> {
     app.mode = Mode::ConfirmDelete(id, name);
-    Command::none()
+    iced::Task::none()
 }
 
 // New handler for canceling deletion
-pub fn handle_cancel_delete_author(app: &mut BookshelfApp) -> Command<Message> {
+pub fn handle_cancel_delete_author(app: &mut BookshelfApp) -> iced::Task<Message> {
     app.mode = Mode::View;
-    Command::none()
+    iced::Task::none()
 }
 
-pub fn handle_delete_author(app: &mut BookshelfApp, id: i32) -> Command<Message> {
-    Command::perform(
+pub fn handle_delete_author(_: &mut BookshelfApp, id: i32) ->
+                                                           iced::Task<Message> {
+    iced::Task::perform(
         async move {
             match db::delete_author(id) {
                 Ok(count) => Ok(count),
@@ -198,7 +203,7 @@ pub fn handle_delete_author(app: &mut BookshelfApp, id: i32) -> Command<Message>
 pub fn handle_author_deleted(
     app: &mut BookshelfApp,
     result: Result<usize, String>,
-) -> Command<Message> {
+) -> iced::Task<Message> {
     app.mode = Mode::View; // Ensure we go back to view mode
 
     match result {
@@ -223,7 +228,7 @@ pub fn view(app: &BookshelfApp) -> Element<Message> {
 fn view_author_list(app: &BookshelfApp) -> Element<Message> {
     let add_button = button("Add New Author")
         .on_press(Message::AddAuthorMode)
-        .style(iced::theme::Button::Primary);
+        .style(button::primary);
 
     let author_list = if app.authors.is_empty() {
         column![text("No authors found").size(16)]
@@ -258,10 +263,10 @@ fn view_author_list(app: &BookshelfApp) -> Element<Message> {
                 .width(Length::Fill),
                 button("View")
                     .on_press(Message::ViewAuthorDetails(author.clone()))
-                    .style(iced::theme::Button::Secondary),
+                    .style(button::secondary),
                 button("Edit")
                     .on_press(Message::EditAuthorMode(author.clone()))
-                    .style(iced::theme::Button::Secondary),
+                    .style(button::secondary),
                 button("Delete")
                     .on_press(Message::ConfirmDeleteAuthor(
                         author.Id,
@@ -270,15 +275,15 @@ fn view_author_list(app: &BookshelfApp) -> Element<Message> {
                             .clone()
                             .unwrap_or_else(|| "Unnamed Author".to_string())
                     ))
-                    .style(iced::theme::Button::Destructive),
+                    .style(button::danger),
             ]
             .spacing(10)
-            .align_items(iced::Alignment::Center);
+            .align_y(iced::alignment::Vertical::Center);
 
             col = col.push(
                 container(author_row)
                     .padding(10)
-                    .style(iced::theme::Container::Box),
+                    .style(container::bordered_box),
             );
         }
 
@@ -288,7 +293,7 @@ fn view_author_list(app: &BookshelfApp) -> Element<Message> {
     column![
         row![
             text("Authors").size(24),
-            iced::widget::horizontal_space(Length::Fill),
+            iced::widget::horizontal_space(),
             add_button
         ]
         .padding(10)
@@ -309,11 +314,11 @@ fn view_author_details(app: &BookshelfApp) -> Element<Message> {
 
         let back_button = button("Back to Authors")
             .on_press(Message::ViewAuthorMode)
-            .style(iced::theme::Button::Secondary);
+            .style(button::secondary);
 
         let edit_button = button("Edit Author")
             .on_press(Message::EditAuthorMode(author.clone()))
-            .style(iced::theme::Button::Primary);
+            .style(button::primary);
 
         let delete_button = button("Delete Author")
             .on_press(Message::ConfirmDeleteAuthor(
@@ -323,11 +328,11 @@ fn view_author_details(app: &BookshelfApp) -> Element<Message> {
                     .clone()
                     .unwrap_or_else(|| "Unnamed Author".to_string()),
             ))
-            .style(iced::theme::Button::Destructive);
+            .style(button::danger);
 
         let header = row![
             text(format!("Author: {}", author_name)).size(24),
-            iced::widget::horizontal_space(Length::Fill),
+            iced::widget::horizontal_space(),
             back_button,
             edit_button,
             delete_button,
@@ -381,17 +386,17 @@ fn view_author_details(app: &BookshelfApp) -> Element<Message> {
                     .width(Length::Fill),
                     button("View in Books")
                         .on_press(Message::TabSelected(crate::ui::Tab::Books))
-                        .style(iced::theme::Button::Secondary)
+                        .style(button::secondary)
                         .padding(8),
                 ]
                 .spacing(15)
                 .padding(10)
-                .align_items(iced::Alignment::Center);
+                .align_y(iced::alignment::Vertical::Center);
 
                 col = col.push(
                     container(book_row)
                         .padding(10)
-                        .style(iced::theme::Container::Box),
+                        .style(container::bordered_box),
                 );
             }
 
@@ -427,10 +432,10 @@ fn view_author_form(app: &BookshelfApp) -> Element<Message> {
         row![
             button("Save")
                 .on_press(Message::SaveAuthor)
-                .style(iced::theme::Button::Primary),
+                .style(button::primary),
             button("Cancel")
                 .on_press(Message::ViewAuthorMode)
-                .style(iced::theme::Button::Secondary),
+                .style(button::secondary),
         ]
         .spacing(10)
     ]
@@ -441,7 +446,7 @@ fn view_author_form(app: &BookshelfApp) -> Element<Message> {
     container(form)
         .width(Length::Fill)
         .height(Length::Fill)
-        .center_x()
+        .center_x(Length::Fill)
         .into()
 }
 
@@ -453,9 +458,7 @@ fn view_delete_confirmation<'a>(
 ) -> Element<'a, Message> {
     let confirmation = column![
         text(format!("Are you sure you want to delete the author:")).size(20),
-        text(format!("\"{}\"?", name))
-            .size(24)
-            .style(iced::Color::from_rgb(0.8, 0.0, 0.0)),
+        text(format!("\"{}\"?", name)).size(24),
         text("This action cannot be undone.").size(16),
         if !app.author_books.is_empty() {
             text(format!(
@@ -463,19 +466,18 @@ fn view_delete_confirmation<'a>(
                 app.author_books.len()
             ))
             .size(16)
-            .style(iced::Color::from_rgb(0.8, 0.6, 0.0))
         } else {
             text("")
         },
         row![
             button("Cancel")
                 .on_press(Message::CancelDeleteAuthor)
-                .style(iced::theme::Button::Secondary)
+                .style(button::secondary)
                 .padding(10)
                 .width(Length::Fill),
             button("Confirm Delete")
                 .on_press(Message::DeleteAuthor(id))
-                .style(iced::theme::Button::Destructive)
+                .style(button::danger)
                 .padding(10)
                 .width(Length::Fill),
         ]
@@ -485,13 +487,13 @@ fn view_delete_confirmation<'a>(
     .spacing(20)
     .padding(30)
     .width(Length::Fill)
-    .align_items(iced::Alignment::Center);
+    .align_x(iced::Alignment::Center);
 
     container(confirmation)
         .width(Length::Fill)
         .height(Length::Fill)
-        .center_x()
-        .center_y()
-        .style(iced::theme::Container::Box)
+        .center_x(Fill)
+        .center_y(Fill)
+        .style(container::bordered_box)
         .into()
 }

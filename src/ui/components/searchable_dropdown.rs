@@ -2,10 +2,9 @@
 use crate::models::AuthorModel;
 use crate::ui::Message;
 use iced::widget::{
-    button, column, container, pick_list, row, scrollable, text, text_input, Container,
+    button, column, container, row, scrollable, text, text_input,
 };
-use iced::{Element, Length, Renderer};
-use std::fmt::Display;
+use iced::{Element, Length};
 
 // State for the searchable dropdown
 #[derive(Debug, Clone)]
@@ -94,7 +93,7 @@ pub fn view_author_dropdown(
     .on_press(on_toggle)
     .padding(10)
     .width(Length::Fill)
-    .style(iced::theme::Button::Secondary);
+    .style(button::secondary);
 
     if dropdown.is_open {
         let search_input = text_input("Search author...", &dropdown.search_term)
@@ -112,36 +111,31 @@ pub fn view_author_dropdown(
             .height(Length::Fill)
             .width(Length::Fill)
         } else {
-            let options_column = column(
-                filtered_options
-                    .iter()
-                    .map(|author| {
-                        let name = author
-                            .Name
-                            .clone()
-                            .unwrap_or_else(|| "Unnamed Author".to_string());
-                        // Compare by ID for equality since we can't directly compare AuthorModel types
-                        let is_selected = dropdown
-                            .selected()
-                            .map(|selected_author| selected_author.Id == author.Id)
-                            .unwrap_or(false);
+            let options_column = column(filtered_options.iter().map(|author| {
+                let name = author
+                    .Name
+                    .clone()
+                    .unwrap_or_else(|| "Unnamed Author".to_string());
+                // Compare by ID for equality since we can't directly compare AuthorModel types
+                let is_selected = dropdown
+                    .selected()
+                    .map(|selected_author| selected_author.Id == author.Id)
+                    .unwrap_or(false);
 
-                        container(
-                            button(text(name).size(14))
-                                .on_press(on_select(author.clone()))
-                                .padding(8)
-                                .width(Length::Fill)
-                                .style(if is_selected {
-                                    iced::theme::Button::Primary
-                                } else {
-                                    iced::theme::Button::Secondary
-                                }),
-                        )
+                container(
+                    button(text(name).size(14))
+                        .on_press(on_select(author.clone()))
+                        .padding(8)
                         .width(Length::Fill)
-                        .into()
-                    })
-                    .collect(),
-            )
+                        .style(if is_selected {
+                            button::primary
+                        } else {
+                            button::secondary
+                        }),
+                )
+                .width(Length::Fill)
+                .into()
+            }))
             .spacing(2)
             .width(Length::Fill);
 
