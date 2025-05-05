@@ -57,7 +57,6 @@ pub fn get_connection() -> Result<r2d2::PooledConnection<ConnectionManager<Sqlit
     }
 }
 
-// Author CRUD Operations
 pub fn get_authors() -> Result<Vec<AuthorModel>, DbError> {
     let mut conn = get_connection()?;
     let authors = Author::table

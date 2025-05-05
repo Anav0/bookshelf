@@ -131,7 +131,6 @@ pub fn handle_save_book(app: &mut BookshelfApp) -> iced::Task<Message> {
 
     iced::Task::perform(
         async move {
-            // Use book_id that we extracted before the closure
             if let Some(id) = book_id {
                 match db::update_book(id, &new_book) {
                     Ok(updated) => Ok(updated),
