@@ -3,7 +3,7 @@ use crate::db;
 use crate::models::{AuthorModel, BookWithAuthor, NewAuthor};
 use crate::ui::components::searchable_dropdown::SearchableDropdown;
 use crate::ui::{BookshelfApp, Message, Mode};
-use iced::widget::{button, column, container, row, scrollable, text, text_input};
+use iced::widget::{button, column, container, row, scrollable, text, text_input, Column, Row};
 use iced::Fill;
 use iced::{Element, Length};
 use std::collections::HashMap;
@@ -187,8 +187,7 @@ pub fn handle_cancel_delete_author(app: &mut BookshelfApp) -> iced::Task<Message
     iced::Task::none()
 }
 
-pub fn handle_delete_author(_: &mut BookshelfApp, id: i32) ->
-                                                           iced::Task<Message> {
+pub fn handle_delete_author(_: &mut BookshelfApp, id: i32) -> iced::Task<Message> {
     iced::Task::perform(
         async move {
             match db::delete_author(id) {
@@ -235,59 +234,7 @@ fn view_author_list(app: &BookshelfApp) -> Element<Message> {
             .spacing(5)
             .width(Length::Fill)
     } else {
-        let mut col = column![].spacing(10).width(Length::Fill);
-
-        // Collect book statistics for each author
-        let author_stats = calculate_author_stats(&app.books);
-
-        for author in &app.authors {
-            let author_name = author
-                .Name
-                .clone()
-                .unwrap_or_else(|| "Unnamed Author".to_string());
-
-            // Get stats for this author
-            let stats = author_stats.get(&author.Id).cloned().unwrap_or_default();
-
-            let author_row = row![
-                column![
-                    text(author_name).size(18),
-                    row![
-                        text(format!("Bought: {}", stats.bought)).size(14),
-                        text(format!("Not bought: {}", stats.not_bought)).size(14),
-                        text(format!("Finished: {}", stats.finished)).size(14),
-                    ]
-                    .spacing(10)
-                ]
-                .spacing(5)
-                .width(Length::Fill),
-                button("View")
-                    .on_press(Message::ViewAuthorDetails(author.clone()))
-                    .style(button::secondary),
-                button("Edit")
-                    .on_press(Message::EditAuthorMode(author.clone()))
-                    .style(button::secondary),
-                button("Delete")
-                    .on_press(Message::ConfirmDeleteAuthor(
-                        author.Id,
-                        author
-                            .Name
-                            .clone()
-                            .unwrap_or_else(|| "Unnamed Author".to_string())
-                    ))
-                    .style(button::danger),
-            ]
-            .spacing(10)
-            .align_y(iced::alignment::Vertical::Center);
-
-            col = col.push(
-                container(author_row)
-                    .padding(10)
-                    .style(container::bordered_box),
-            );
-        }
-
-        col
+        create_authors_list(app)
     };
 
     column![
@@ -303,6 +250,65 @@ fn view_author_list(app: &BookshelfApp) -> Element<Message> {
     .spacing(20)
     .padding(20)
     .into()
+}
+
+fn create_authors_list<'a>(app: &BookshelfApp) -> Column<Message> {
+    let mut list = column![].spacing(10).width(Length::Fill);
+
+    let author_stats = calculate_author_stats(&app.books);
+
+    for author in &app.authors {
+        list = list.push(
+            container(create_author_row(&author_stats, author))
+                .padding(10)
+                .style(container::bordered_box),
+        );
+    }
+
+    list
+}
+
+fn create_author_row<'a>(
+    author_stats: &HashMap<i32, BookStats>,
+    author: &AuthorModel,
+) -> Row<'a, Message> {
+    let author_name = author
+        .Name
+        .clone()
+        .unwrap_or_else(|| "Unnamed Author".to_string());
+
+    let stats = author_stats.get(&author.Id).cloned().unwrap_or_default();
+
+    row![
+        column![
+            text(author_name).size(18),
+            row![
+                text(format!("Bought: {}", stats.bought)).size(14),
+                text(format!("Not bought: {}", stats.not_bought)).size(14),
+                text(format!("Finished: {}", stats.finished)).size(14),
+            ]
+            .spacing(10)
+        ]
+        .spacing(5)
+        .width(Length::Fill),
+        button("View")
+            .on_press(Message::ViewAuthorDetails(author.clone()))
+            .style(button::secondary),
+        button("Edit")
+            .on_press(Message::EditAuthorMode(author.clone()))
+            .style(button::secondary),
+        button("Delete")
+            .on_press(Message::ConfirmDeleteAuthor(
+                author.Id,
+                author
+                    .Name
+                    .clone()
+                    .unwrap_or_else(|| "Unnamed Author".to_string())
+            ))
+            .style(button::danger),
+    ]
+    .spacing(10)
+    .align_y(iced::alignment::Vertical::Center)
 }
 
 fn view_author_details(app: &BookshelfApp) -> Element<Message> {

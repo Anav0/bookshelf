@@ -4,7 +4,7 @@ use crate::models::{BookModel, BookWithAuthor, NewBook};
 use crate::ui::components::searchable_dropdown;
 use crate::ui::{sort_books, BookshelfApp, Message, Mode, LIST_MAX_WIDTH};
 use chrono::{Local, NaiveDateTime};
-use iced::widget::{button, column, container, row, scrollable, text, text_input};
+use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
 use iced::{Element, Length};
 
 // Handler functions for book-related messages
@@ -242,13 +242,97 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
         .on_press(Message::AddBookMode)
         .style(button::primary);
 
-    // Determine whether to show all books or filtered search results
     let books_to_display = if app.is_searching {
         app.filtered_books.as_ref().unwrap_or(&app.books)
     } else {
         &app.books
     };
 
+    let search_status = create_search_status_label(app);
+
+    let book_list_content = if books_to_display.is_empty() {
+        create_empty_list_label(app)
+    } else {
+        create_books_list(books_to_display)
+    };
+
+    column![
+        row![
+            text(search_status).size(24),
+            iced::widget::horizontal_space(),
+            add_button
+        ]
+        .padding(15)
+        .width(Length::Fill),
+        scrollable(container(book_list_content).width(Length::Fill)).height(Length::Fill)
+    ]
+    .spacing(20)
+    .padding(25)
+    .into()
+}
+
+fn create_books_list(books_to_display: &Vec<BookWithAuthor>) -> Column<Message> {
+    let mut list = column![].spacing(15).width(Length::Fill).padding(20);
+
+    for book in books_to_display {
+        let author_name = book
+            .author
+            .as_ref()
+            .and_then(|a| a.Name.clone())
+            .unwrap_or_else(|| "No Author".to_string());
+
+        let price_text = book
+            .book
+            .price
+            .map(|p| format!("{:.2}zł", p))
+            .unwrap_or_else(|| "No price".to_string());
+
+        let book_row = row![
+            column![
+                text(&book.book.title).size(18),
+                text(format!("By: {}", author_name)).size(14),
+                text(price_text).size(14),
+            ]
+            .spacing(8)
+            .width(Length::Fill),
+            button("Edit")
+                .on_press(Message::EditBookMode(book.clone()))
+                .style(button::secondary)
+                .padding(8),
+            button("Delete")
+                .on_press(Message::ConfirmDeleteBook(
+                    book.book.id,
+                    book.book.title.clone()
+                ))
+                .style(button::danger)
+                .padding(8),
+        ]
+        .spacing(15)
+        .padding(10)
+        .align_y(iced::Alignment::Center);
+
+        list = list.push(
+            container(book_row)
+                .padding(10)
+                .style(container::bordered_box),
+        );
+    }
+    list
+}
+
+fn create_empty_list_label(app: &BookshelfApp) -> Column<Message> {
+    column![text(if app.is_searching {
+        format!("No books found matching '{}'", app.search_term_displayed)
+    } else {
+        "No books found".to_string()
+    })
+    .size(16)]
+    .spacing(5)
+    .width(Length::Fill)
+    .padding(20)
+}
+
+fn create_search_status_label(app: &BookshelfApp) -> String {
     let search_status = if app.is_searching {
         if let Some(filtered) = &app.filtered_books {
             if filtered.is_empty() {
@@ -266,80 +350,7 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
     } else {
         "Books".to_string()
     };
-
-    let book_list = if books_to_display.is_empty() {
-        column![text(if app.is_searching {
-            format!("No books found matching '{}'", app.search_term_displayed)
-        } else {
-            "No books found".to_string()
-        })
-        .size(16)]
-        .spacing(5)
-        .width(Length::Fill)
-        .padding(20)
-    } else {
-        let mut col = column![].spacing(15).width(Length::Fill).padding(20);
-
-        for book in books_to_display {
-            let author_name = book
-                .author
-                .as_ref()
-                .and_then(|a| a.Name.clone())
-                .unwrap_or_else(|| "No Author".to_string());
-
-            let price_text = book
-                .book
-                .price
-                .map(|p| format!("{:.2}zł", p))
-                .unwrap_or_else(|| "No price".to_string());
-
-            let book_row = row![
-                column![
-                    text(&book.book.title).size(18),
-                    text(format!("By: {}", author_name)).size(14),
-                    text(price_text).size(14),
-                ]
-                .spacing(8)
-                .width(Length::Fill),
-                button("Edit")
-                    .on_press(Message::EditBookMode(book.clone()))
-                    .style(button::secondary)
-                    .padding(8),
-                button("Delete")
-                    .on_press(Message::ConfirmDeleteBook(
-                        book.book.id,
-                        book.book.title.clone()
-                    ))
-                    .style(button::danger)
-                    .padding(8),
-            ]
-            .spacing(15)
-            .padding(10)
-            .align_y(iced::Alignment::Center);
-
-            col = col.push(
-                container(book_row)
-                    .padding(10)
-                    .style(container::bordered_box),
-            );
-        }
-
-        col
-    };
-
-    column![
-        row![
-            text(search_status).size(24),
-            iced::widget::horizontal_space(),
-            add_button
-        ]
-        .padding(15)
-        .width(Length::Fill),
-        scrollable(container(book_list).width(Length::Fill)).height(Length::Fill)
-    ]
-    .spacing(20)
-    .padding(25)
-    .into()
+    search_status
 }
 
 fn view_book_form(app: &BookshelfApp) -> Element<Message> {
