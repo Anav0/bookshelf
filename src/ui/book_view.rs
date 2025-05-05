@@ -22,37 +22,39 @@ pub fn handle_load_books(_: &mut BookshelfApp) -> iced::Task<Message> {
 
 pub fn handle_add_book_mode(app: &mut BookshelfApp) -> iced::Task<Message> {
     app.mode = Mode::Add;
-    app.current_book = None;
+    app.selected_book = None;
     app.book_title = String::new();
     app.book_price = String::new();
     app.book_bought_date = String::new();
     app.book_finished_date = String::new();
     app.selected_author = None;
 
-    iced::Task::perform(async {}, |_| Message::LoadAuthors)
+    app.update(Message::LoadAuthors)
+
 }
 
-pub fn handle_edit_book_mode(app: &mut BookshelfApp, book: BookWithAuthor) -> iced::Task<Message> {
+pub fn handle_edit_book_mode(app: &mut BookshelfApp, pair: &BookWithAuthor)
+                             -> iced::Task<Message> {
     app.mode = Mode::Edit;
-    app.current_book = Some(book.clone());
-    app.book_title = book.book.title;
-    app.book_price = book.book.price.map_or_else(String::new, |p| p.to_string());
-    app.book_bought_date = book
+    app.selected_book = Some(pair.clone());
+    app.book_title = pair.book.title.clone();
+    app.book_price = pair.book.price.map_or_else(String::new, |p| p.to_string());
+    app.book_bought_date = pair
         .book
         .bought
         .map_or_else(String::new, |d| d.format("%Y-%m-%d %H:%M:%S").to_string());
-    app.book_finished_date = book
+    app.book_finished_date = pair
         .book
         .finished
         .map_or_else(String::new, |d| d.format("%Y-%m-%d %H:%M:%S").to_string());
-    app.selected_author = book.author;
+    app.selected_author = pair.author.clone();
 
-    iced::Task::perform(async {}, |_| Message::LoadAuthors)
+    app.update(Message::LoadAuthors)
 }
 
 pub fn handle_view_book_mode(app: &mut BookshelfApp) -> iced::Task<Message> {
     app.mode = Mode::View;
-    app.current_book = None;
+    app.selected_book = None;
 
     app.update(Message::LoadBooks)
 }
@@ -112,13 +114,13 @@ pub fn handle_save_book(app: &mut BookshelfApp) -> iced::Task<Message> {
 
     let now = Local::now().naive_local();
     let added_date = app
-        .current_book
+        .selected_book
         .as_ref()
         .and_then(|b| b.book.added)
         .unwrap_or(now);
 
     // Extract book_id outside the closure if we're in edit mode
-    let book_id = app.current_book.as_ref().map(|book| book.book.id);
+    let book_id = app.selected_book.as_ref().map(|book| book.book.id);
 
     let new_book = NewBook {
         title: app.book_title.clone(),

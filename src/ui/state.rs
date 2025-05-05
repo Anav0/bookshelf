@@ -20,7 +20,7 @@ pub struct BookshelfApp {
 
     // Book state
     pub books: Vec<BookWithAuthor>,
-    pub current_book: Option<BookWithAuthor>,
+    pub selected_book: Option<BookWithAuthor>,
     pub book_title: String,
     pub book_price: String,
     pub book_bought_date: String,
@@ -52,7 +52,7 @@ impl BookshelfApp {
             is_searching: false,
             filtered_books: None,
             books: Vec::new(),
-            current_book: None,
+            selected_book: None,
             book_title: String::new(),
             book_price: String::new(),
             book_bought_date: String::new(),
@@ -84,11 +84,10 @@ impl BookshelfApp {
                     self.error = Some(format!("Failed to initialize database: {}", e));
                     return iced::Task::none();
                 }
-
-                return iced::Task::batch(vec![
-                    iced::Task::perform(async {}, |_| Message::LoadBooks),
-                    iced::Task::perform(async {}, |_| Message::LoadAuthors),
-                ]);
+                iced::Task::batch(vec![
+                    self.update(Message::LoadBooks),
+                    self.update(Message::LoadAuthors),
+                ])
             }
 
             Message::TabSelected(tab) => {
@@ -223,7 +222,7 @@ impl BookshelfApp {
                 command
             }
             Message::AddBookMode => book_view::handle_add_book_mode(self),
-            Message::EditBookMode(book) => book_view::handle_edit_book_mode(self, book),
+            Message::EditBookMode(book) => book_view::handle_edit_book_mode(self, &book),
             Message::ViewBookMode => book_view::handle_view_book_mode(self),
             Message::BookTitleChanged(value) => book_view::handle_book_title_changed(self, value),
             Message::BookPriceChanged(value) => book_view::handle_book_price_changed(self, value),
