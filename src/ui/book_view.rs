@@ -2,10 +2,10 @@
 use crate::db;
 use crate::models::{BookModel, BookWithAuthor, NewBook, ID};
 use crate::ui::components::searchable_dropdown;
-use crate::ui::{sort_books, BookshelfApp, Message, Mode, LIST_MAX_WIDTH};
+use crate::ui::{sort_books, BookFilter, BookshelfApp, Message, Mode, LIST_MAX_WIDTH};
 use chrono::{Local, NaiveDateTime};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
-use iced::{Element, Length};
+use iced::{Element, Length, Task};
 
 // Handler functions for book-related messages
 pub fn handle_load_books(_: &mut BookshelfApp) -> iced::Task<Message> {
@@ -27,14 +27,12 @@ pub fn handle_add_book_mode(app: &mut BookshelfApp) -> iced::Task<Message> {
     app.book_price = String::new();
     app.book_bought_date = String::new();
     app.book_finished_date = String::new();
-    app.selected_author = None;
+    app.new_author_model = None;
 
     app.update(Message::LoadAuthors)
-
 }
 
-pub fn handle_edit_book_mode(app: &mut BookshelfApp, pair: &BookWithAuthor)
-                             -> iced::Task<Message> {
+pub fn handle_edit_book_mode(app: &mut BookshelfApp, pair: &BookWithAuthor) -> iced::Task<Message> {
     app.mode = Mode::Edit;
     app.selected_book = Some(pair.clone());
     app.book_title = pair.book.title.clone();
@@ -47,7 +45,7 @@ pub fn handle_edit_book_mode(app: &mut BookshelfApp, pair: &BookWithAuthor)
         .book
         .finished
         .map_or_else(String::new, |d| d.format("%Y-%m-%d %H:%M:%S").to_string());
-    app.selected_author = pair.author.clone();
+    app.new_author_model = pair.author.clone();
 
     app.update(Message::LoadAuthors)
 }
@@ -128,7 +126,7 @@ pub fn handle_save_book(app: &mut BookshelfApp) -> iced::Task<Message> {
         bought: bought_date,
         finished: finished_date,
         added: Some(added_date),
-        AuthorFK: app.selected_author.as_ref().map(|a| a.Id),
+        AuthorFK: app.new_author_model.as_ref().map(|a| a.Id),
     };
 
     iced::Task::perform(
@@ -201,7 +199,7 @@ pub fn handle_books_loaded(
         Ok(books) => {
             app.books = books;
             app.filtered_books = None; // Reset filtered books when loading all books
-            app.is_searching = false;
+            app.is_filter_applied = false;
 
             // Apply sorting directly to the loaded books
             sort_books(&mut app.books, &app.sort_field, &app.sort_direction);
@@ -243,7 +241,7 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
         .on_press(Message::AddBookMode)
         .style(button::primary);
 
-    let books_to_display = if app.is_searching {
+    let books_to_display = if app.is_filter_applied {
         app.filtered_books.as_ref().unwrap_or(&app.books)
     } else {
         &app.books
@@ -260,6 +258,7 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
     column![
         row![
             text(search_status).size(24),
+            app.author_dropdown.view(),
             iced::widget::horizontal_space(),
             add_button
         ]
@@ -322,7 +321,7 @@ fn create_books_list(books_to_display: &Vec<BookWithAuthor>) -> Column<Message> 
 }
 
 fn create_empty_list_label(app: &BookshelfApp) -> Column<Message> {
-    column![text(if app.is_searching {
+    column![text(if app.is_filter_applied {
         format!("No books found matching '{}'", app.search_term_displayed)
     } else {
         "No books found".to_string()
@@ -334,7 +333,7 @@ fn create_empty_list_label(app: &BookshelfApp) -> Column<Message> {
 }
 
 fn create_search_status_label(app: &BookshelfApp) -> String {
-    let search_status = if app.is_searching {
+    let search_status = if app.is_filter_applied {
         if let Some(filtered) = &app.filtered_books {
             if filtered.is_empty() {
                 format!("No books found matching '{}'", app.search_term_displayed)
@@ -383,13 +382,7 @@ fn view_book_form(app: &BookshelfApp) -> Element<Message> {
             .on_input(Message::BookFinishedDateChanged)
             .padding(10),
         text("Author:").size(16),
-        // Use our custom searchable dropdown instead of pick_list
-        searchable_dropdown::view_author_dropdown(
-            &app.author_dropdown,
-            Message::ToggleAuthorDropdown,
-            |term| Message::AuthorSearchChanged(term),
-            |author| Message::BookAuthorSelected(author),
-        ),
+        app.author_dropdown.view(),
         row![
             button("Save")
                 .on_press(Message::SaveBook)
@@ -449,4 +442,32 @@ fn view_delete_confirmation<'a>(
         .center_y(Length::Fill)
         .style(container::bordered_box)
         .into()
+}
+
+pub(crate) fn handle_book_filter_changed(
+    app: &mut BookshelfApp,
+    filter: BookFilter,
+) -> Task<Message> {
+    match filter {
+        BookFilter::Author(author_name) => {
+            app.is_filter_applied = true;
+            app.filtered_books = Some(
+                app.books
+                    .iter()
+                    .filter(|book_with_author| {
+                        book_with_author
+                            .author
+                            .as_ref()
+                            .and_then(|author| author.Name.as_ref())
+                            .map(|name| *name == author_name)
+                            .unwrap_or(false)
+                    })
+                    .cloned()
+                    .collect(),
+            );
+        }
+        BookFilter::Title(_) => {}
+    }
+
+    iced::Task::none()
 }

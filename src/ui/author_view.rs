@@ -2,7 +2,7 @@
 use crate::db;
 use crate::models::{AuthorModel, BookWithAuthor, NewAuthor, ID};
 use crate::ui::components::searchable_dropdown::SearchableDropdown;
-use crate::ui::{BookshelfApp, Message, Mode};
+use crate::ui::{BookFilter, BookshelfApp, Message, Mode};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column, Row};
 use iced::Fill;
 use iced::{Element, Length};
@@ -58,7 +58,14 @@ pub fn handle_authors_loaded(
     match result {
         Ok(authors) => {
             app.authors = authors.clone();
-            app.author_dropdown = SearchableDropdown::new(authors, app.selected_author.clone());
+            app.author_dropdown = SearchableDropdown::new(
+                authors
+                    .into_iter()
+                    .filter_map(|author| author.Name)
+                    .collect(),
+                Box::new(|name| Message::BookFilterChanged(BookFilter::Author(name))),
+                None,
+            );
         }
         Err(e) => {
             app.error = Some(e);
@@ -187,8 +194,7 @@ pub fn handle_cancel_delete_author(app: &mut BookshelfApp) -> iced::Task<Message
     iced::Task::none()
 }
 
-pub fn handle_delete_author(_: &mut BookshelfApp, id: ID) ->
-                                                         iced::Task<Message> {
+pub fn handle_delete_author(_: &mut BookshelfApp, id: ID) -> iced::Task<Message> {
     iced::Task::perform(
         async move {
             match db::delete_author(id) {
@@ -458,11 +464,7 @@ fn view_author_form(app: &BookshelfApp) -> Element<Message> {
 }
 
 // New function to display deletion confirmation
-fn view_delete_confirmation<'a>(
-    app: &'a BookshelfApp,
-    id: ID,
-    name: &str,
-) -> Element<'a, Message> {
+fn view_delete_confirmation<'a>(app: &'a BookshelfApp, id: ID, name: &str) -> Element<'a, Message> {
     let confirmation = column![
         text(format!("Are you sure you want to delete the author:")).size(20),
         text(format!("\"{}\"?", name)).size(24),

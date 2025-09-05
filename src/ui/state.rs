@@ -1,7 +1,9 @@
 use crate::db;
 use crate::models::{AuthorModel, BookWithAuthor};
 use crate::ui::components::searchable_dropdown::SearchableDropdown;
-use crate::ui::{author_view, book_view, sort_books, Message, Mode, SortDirection, SortField, Tab};
+use crate::ui::{
+    author_view, book_view, sort_books, BookFilter, Message, Mode, SortDirection, SortField, Tab,
+};
 
 pub struct BookshelfApp {
     // State
@@ -15,7 +17,7 @@ pub struct BookshelfApp {
     // Search state
     pub search_query: String,
     pub search_term_displayed: String, // Static term that was searched for
-    pub is_searching: bool,
+    pub is_filter_applied: bool,
     pub filtered_books: Option<Vec<BookWithAuthor>>,
 
     // Book state
@@ -25,10 +27,11 @@ pub struct BookshelfApp {
     pub book_price: String,
     pub book_bought_date: String,
     pub book_finished_date: String,
-    pub selected_author: Option<AuthorModel>,
+    pub new_author_model: Option<AuthorModel>,
 
-    // Author dropdown state
-    pub author_dropdown: SearchableDropdown<AuthorModel>,
+    // Book view dropdowns
+    //Filter by author's name
+    pub author_dropdown: SearchableDropdown<String>,
 
     // Author state
     pub authors: Vec<AuthorModel>,
@@ -49,7 +52,7 @@ impl BookshelfApp {
             sort_direction: SortDirection::Ascending,
             search_query: String::new(),
             search_term_displayed: String::new(),
-            is_searching: false,
+            is_filter_applied: false,
             filtered_books: None,
             books: Vec::new(),
             selected_book: None,
@@ -57,28 +60,23 @@ impl BookshelfApp {
             book_price: String::new(),
             book_bought_date: String::new(),
             book_finished_date: String::new(),
-            selected_author: None,
+            new_author_model: None,
             authors: Vec::new(),
             current_author: None,
             author_name: String::new(),
             author_books: Vec::new(),
             error: None,
-            author_dropdown: SearchableDropdown::new(Vec::new(), None),
+            author_dropdown: SearchableDropdown::new(
+                Vec::new(),
+                Box::new(|name| Message::BookFilterChanged(BookFilter::Author(name))),
+                None,
+            ),
         }
-    }
-
-    pub fn handle_toggle_author_dropdown(&mut self) -> iced::Task<Message> {
-        self.author_dropdown.toggle();
-        iced::Task::none()
-    }
-
-    pub fn handle_author_search_changed(&mut self, term: String) -> iced::Task<Message> {
-        self.author_dropdown.search(term);
-        iced::Task::none()
     }
 
     pub fn update(&mut self, message: Message) -> iced::Task<Message> {
         match message {
+            Message::None => iced::Task::none(),
             Message::Initialize => {
                 if let Err(e) = db::initialize_pool() {
                     self.error = Some(format!("Failed to initialize database: {}", e));
@@ -95,7 +93,7 @@ impl BookshelfApp {
                 self.mode = Mode::View;
                 self.search_query = String::new();
                 self.search_term_displayed = String::new();
-                self.is_searching = false;
+                self.is_filter_applied = false;
                 self.filtered_books = None;
 
                 match tab {
@@ -117,7 +115,7 @@ impl BookshelfApp {
 
             Message::ApplySorting => {
                 // Sort the books based on the selected field and direction
-                let books_to_sort = if self.is_searching {
+                let books_to_sort = if self.is_filter_applied {
                     self.filtered_books.as_mut()
                 } else {
                     Some(&mut self.books)
@@ -135,21 +133,18 @@ impl BookshelfApp {
                 self.search_query = query;
                 iced::Task::none()
             }
-            Message::ToggleAuthorDropdown => self.handle_toggle_author_dropdown(),
-            Message::AuthorSearchChanged(term) => self.handle_author_search_changed(term),
             Message::BookAuthorSelected(author) => {
-                self.selected_author = Some(author.clone());
-                self.author_dropdown.select(author);
+                self.new_author_model = Some(author.clone());
                 iced::Task::none()
             }
             Message::PerformSearch => {
                 if self.search_query.is_empty() {
-                    self.is_searching = false;
+                    self.is_filter_applied = false;
                     self.filtered_books = None;
                     return iced::Task::none();
                 }
 
-                self.is_searching = true;
+                self.is_filter_applied = true;
 
                 // Perform local search in the Books tab
                 if let Tab::Books = self.current_tab {
@@ -206,7 +201,7 @@ impl BookshelfApp {
             Message::ClearSearch => {
                 self.search_query = String::new();
                 self.search_term_displayed = String::new();
-                self.is_searching = false;
+                self.is_filter_applied = false;
                 self.filtered_books = None;
                 iced::Task::none()
             }
@@ -268,6 +263,12 @@ impl BookshelfApp {
             Message::Error(error) => {
                 self.error = Some(error);
                 iced::Task::none()
+            }
+            Message::SearchableDropdownMessages(dropdown_message) => {
+                self.author_dropdown.update(dropdown_message)
+            }
+            Message::BookFilterChanged(book_filter) => {
+                book_view::handle_book_filter_changed(self, book_filter)
             }
         }
     }

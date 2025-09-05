@@ -1,10 +1,13 @@
 // src/ui/messages.rs (additions for searchable dropdown)
 use crate::models::{AuthorModel, BookModel, BookWithAuthor, ID};
+use crate::ui::components::searchable_dropdown;
 use std::fmt;
 
 /// Defines all the possible messages that can be sent in the application
 #[derive(Debug, Clone)]
 pub enum Message {
+    None,
+
     // Navigation
     TabSelected(Tab),
 
@@ -35,6 +38,9 @@ pub enum Message {
     DeleteBook(ID),
     CancelDeleteBook,
     BookDeleted(Result<usize, String>),
+    BookFilterChanged(BookFilter),
+
+    SearchableDropdownMessages(searchable_dropdown::Message),
 
     // Author Messages
     LoadAuthors,
@@ -42,8 +48,8 @@ pub enum Message {
     AddAuthorMode,
     EditAuthorMode(AuthorModel),
     ViewAuthorMode,
-    ViewAuthorDetails(AuthorModel),  // New message for viewing author details
-    AuthorBooksLoaded(Result<Vec<BookWithAuthor>, String>),  // New message for loaded books
+    ViewAuthorDetails(AuthorModel), // New message for viewing author details
+    AuthorBooksLoaded(Result<Vec<BookWithAuthor>, String>), // New message for loaded books
     AuthorNameChanged(String),
     SaveAuthor,
     AuthorSaved(Result<AuthorModel, String>),
@@ -52,19 +58,21 @@ pub enum Message {
     CancelDeleteAuthor, // New message for cancel deletion
     AuthorDeleted(Result<usize, String>),
 
-    // Searchable Dropdown Messages
-    ToggleAuthorDropdown,
-    AuthorSearchChanged(String),
-
     Initialize,
     Error(String),
+}
+
+#[derive(Debug, Clone)]
+pub enum BookFilter {
+    Author(String),
+    Title(String),
 }
 
 /// Defines the application display modes
 #[derive(Debug, Clone)]
 pub enum Mode {
     View,
-    ViewDetails,  // Mode for viewing author details
+    ViewDetails, // Mode for viewing author details
     Add,
     Edit,
     ConfirmDelete(ID, String), // ID and name of item to delete
