@@ -18,6 +18,7 @@ pub struct SearchableDropdown<T: PartialEq<String> + PartialEq<T>> {
     search_term: String,
     is_open: bool,
     on_change_msg: Box<dyn Fn(T) -> GlobalMessage>,
+    default_placeholder: String,
 }
 
 impl<T: AsRef<str> + Clone + PartialEq<String> + PartialEq<T>> SearchableDropdown<T> {
@@ -32,6 +33,7 @@ impl<T: AsRef<str> + Clone + PartialEq<String> + PartialEq<T>> SearchableDropdow
             search_term: String::new(),
             is_open: false,
             on_change_msg,
+            default_placeholder: String::from("Select"),
         }
     }
 
@@ -94,7 +96,12 @@ impl<T: AsRef<str> + Clone + PartialEq<String> + PartialEq<T>> SearchableDropdow
                 .collect::<Vec<_>>()
         };
 
-        let header = button(text("ABCD").width(Length::Fill))
+        let selected_option = self.selected.and_then(|idx| self.options.get(idx));
+        let placeholder: &str = selected_option
+            .map(|s| s.as_ref())
+            .unwrap_or(&self.default_placeholder);
+
+        let header = button(text(placeholder).width(Length::Fill))
             .padding(10)
             .on_press(GlobalMessage::SearchableDropdownMessages(Message::Toggle))
             .width(Length::Fill)

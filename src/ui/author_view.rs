@@ -247,7 +247,7 @@ fn view_author_list(app: &BookshelfApp) -> Element<Message> {
     column![
         row![
             text("Authors").size(24),
-            iced::widget::horizontal_space(),
+            iced::widget::space().width(iced::Length::Fill),
             add_button
         ]
         .padding(10)
@@ -345,7 +345,7 @@ fn view_author_details(app: &BookshelfApp) -> Element<Message> {
 
         let header = row![
             text(format!("Author: {}", author_name)).size(24),
-            iced::widget::horizontal_space(),
+            iced::widget::space().width(iced::Length::Fill),
             back_button,
             edit_button,
             delete_button,
@@ -466,7 +466,7 @@ fn view_author_form(app: &BookshelfApp) -> Element<Message> {
 // New function to display deletion confirmation
 fn view_delete_confirmation<'a>(app: &'a BookshelfApp, id: ID, name: &str) -> Element<'a, Message> {
     let confirmation = column![
-        text(format!("Are you sure you want to delete the author:")).size(20),
+        text("Are you sure you want to delete the author").size(20),
         text(format!("\"{}\"?", name)).size(24),
         text("This action cannot be undone.").size(16),
         if !app.author_books.is_empty() {

@@ -15,28 +15,27 @@ fn main() -> iced::Result {
     // Create window settings
     let window_settings = window::Settings {
         size: Size::new(1024.0, 768.0), // Note: now uses Size struct
+        maximized: false,
+        fullscreen: false,
         position: window::Position::Centered,
         min_size: Some(Size::new(800.0, 600.0)), // Note: uses Size struct
         max_size: None,
         visible: true,
         resizable: true,
+        closeable: true,
+        minimizable: true,
         decorations: true,
         transparent: false,
+        blur: false,
         level: Default::default(),
         icon,
         platform_specific: Default::default(),
         exit_on_close_request: false,
     };
-
-    // New application initialization approach
-    iced::application("Bookshelf App", BookshelfApp::update, BookshelfApp::view)
+    iced::application(BookshelfApp::new, BookshelfApp::update, BookshelfApp::view)
+        .title("Bookshelf")
         .window(window_settings)
         .antialiasing(true)
         .exit_on_close_request(true)
-        .run_with(|| {
-            (
-                BookshelfApp::new(), // Initialize your app state
-                iced::Task::perform(async {}, |_| Message::Initialize),
-            )
-        })
+        .run()
 }

@@ -259,7 +259,7 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
         row![
             text(search_status).size(24),
             app.author_dropdown.view(),
-            iced::widget::horizontal_space(),
+            iced::widget::space().width(iced::Length::Fill),
             add_button
         ]
         .padding(15)

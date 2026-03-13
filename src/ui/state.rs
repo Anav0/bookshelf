@@ -44,8 +44,8 @@ pub struct BookshelfApp {
 }
 
 impl BookshelfApp {
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> (Self, iced::Task<Message>) {
+        let state = Self {
             current_tab: Tab::Books,
             mode: Mode::View,
             sort_field: SortField::Title,
@@ -71,7 +71,9 @@ impl BookshelfApp {
                 Box::new(|name| Message::BookFilterChanged(BookFilter::Author(name))),
                 None,
             ),
-        }
+        };
+
+        (state, iced::Task::perform(async { () }, |_| Message::Initialize))
     }
 
     pub fn update(&mut self, message: Message) -> iced::Task<Message> {
