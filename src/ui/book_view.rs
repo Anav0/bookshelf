@@ -262,7 +262,9 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
             iced::widget::space().width(iced::Length::Fill),
             add_button
         ]
+        .align_y(iced::Alignment::Center)
         .padding(15)
+        .spacing(15)
         .width(Length::Fill),
         scrollable(container(book_list_content).width(Length::Fill)).height(Length::Fill)
     ]
