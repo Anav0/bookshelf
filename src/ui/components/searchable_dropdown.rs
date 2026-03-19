@@ -1,8 +1,9 @@
+use std::fmt::Display;
 // src/ui/components/searchable_dropdown.rs
 use crate::models::AuthorModel;
 use crate::ui::{BookFilter, Message as GlobalMessage};
 use iced::border::width;
-use iced::widget::{button, column, container, row, scrollable, text, text_input};
+use iced::widget::{button, column, container, pick_list, row, scrollable, text, text_input};
 use iced::{padding, Element, Length, Task};
 
 #[derive(Debug, Clone)]
@@ -12,7 +13,7 @@ pub enum Message {
     Select(Option<usize>),
 }
 
-pub struct SearchableDropdown<T: PartialEq<String> + PartialEq<T>> {
+pub struct SearchableDropdown<T: PartialEq<String> + PartialEq<T> + Display + Clone> {
     pub options: Vec<T>,
     selected: Option<usize>,
     search_term: String,
@@ -21,7 +22,7 @@ pub struct SearchableDropdown<T: PartialEq<String> + PartialEq<T>> {
     default_placeholder: String,
 }
 
-impl<T: AsRef<str> + Clone + PartialEq<String> + PartialEq<T>> SearchableDropdown<T> {
+impl<T: AsRef<str> + Clone + PartialEq<String> + PartialEq<T> + Display> SearchableDropdown<T> {
     pub fn new(
         options: Vec<T>,
         on_change_msg: Box<dyn Fn(T) -> GlobalMessage>,
@@ -79,9 +80,25 @@ impl<T: AsRef<str> + Clone + PartialEq<String> + PartialEq<T>> SearchableDropdow
         }
     }
 
-    pub fn view(&self) -> Element<GlobalMessage> {
-        // Filter options by search term
-        let filtered_options = if self.search_term.is_empty() {
+    pub fn overlay_view(&self) -> Element<'_, GlobalMessage> {
+        let selected_option = self.selected.and_then(|idx| self.options.get(idx));
+
+        let placeholder = self.get_selected_option();
+        let options = self.get_filtered_options();
+
+
+        // let _search_input = text_input("Search author...", &self.search_term)
+        //     .on_input(|text| GlobalMessage::SearchableDropdownMessages(Message::Search(text)))
+        //     .padding(10)
+        //     .width(Length::Fill);
+
+        pick_list(options, selected_option, |x| GlobalMessage::None)
+            .placeholder(placeholder)
+            .into()
+    }
+
+    pub fn get_filtered_options(&self) -> Vec<T> {
+        if self.search_term.is_empty() {
             self.options.clone()
         } else {
             self.options
@@ -94,65 +111,14 @@ impl<T: AsRef<str> + Clone + PartialEq<String> + PartialEq<T>> SearchableDropdow
                 })
                 .cloned()
                 .collect::<Vec<_>>()
-        };
-
-        let selected_option = self.selected.and_then(|idx| self.options.get(idx));
-        let placeholder: &str = selected_option
-            .map(|s| s.as_ref())
-            .unwrap_or(&self.default_placeholder);
-
-        let header = button(text(placeholder).width(Length::Fill))
-            .padding(10)
-            .on_press(GlobalMessage::SearchableDropdownMessages(Message::Toggle))
-            .width(Length::Fill)
-            .style(button::secondary);
-
-        if self.is_open {
-            let search_input = text_input("Search author...", &self.search_term)
-                .on_input(|text| GlobalMessage::SearchableDropdownMessages(Message::Search(text)))
-                .padding(10)
-                .width(Length::Fill);
-
-            let options_list = if filtered_options.is_empty() {
-                scrollable(container(text("No matching authors").size(14)).padding(10))
-                    .height(Length::Fill)
-                    .width(Length::Fill)
-            } else {
-                let options_column = column(filtered_options.iter().map(|(option)| {
-                    let name = String::from(option.as_ref());
-
-                    let is_selected = false;
-
-                    let index = self.options.iter().position(|o| o == option);
-
-                    container(
-                        button(text(name).size(14))
-                            .on_press(GlobalMessage::SearchableDropdownMessages(Message::Select(
-                                index,
-                            )))
-                            .padding(8)
-                            .width(Length::Fill)
-                            .style(if is_selected {
-                                button::primary
-                            } else {
-                                button::secondary
-                            }),
-                    )
-                    .width(Length::Fill)
-                    .into()
-                }))
-                .spacing(2)
-                .width(Length::Fill);
-
-                scrollable(options_column).height(200).width(Length::Fill)
-            };
-
-            column![header, search_input, options_list]
-                .spacing(5)
-                .width(Length::Fill)
-                .into()
-        } else {
-            column![header].width(Length::Fill).into()
         }
     }
+
+    pub fn get_selected_option(&self) -> &str {
+        self.selected
+            .and_then(|idx| self.options.get(idx))
+            .map(|s| s.as_ref())
+            .unwrap_or(&self.default_placeholder)
+    }
+
 }

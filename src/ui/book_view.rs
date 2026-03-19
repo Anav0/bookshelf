@@ -258,7 +258,8 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
     column![
         row![
             text(search_status).size(24),
-            app.author_dropdown.view(),
+            // app.author_dropdown.view(),
+            app.author_dropdown.overlay_view(),
             iced::widget::space().width(iced::Length::Fill),
             add_button
         ]
@@ -384,7 +385,7 @@ fn view_book_form(app: &BookshelfApp) -> Element<Message> {
             .on_input(Message::BookFinishedDateChanged)
             .padding(10),
         text("Author:").size(16),
-        app.author_dropdown.view(),
+        app.author_dropdown.overlay_view(),
         row![
             button("Save")
                 .on_press(Message::SaveBook)
