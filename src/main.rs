@@ -5,7 +5,7 @@ mod ui;
 
 use crate::ui::{BookshelfApp, Message};
 use iced::window::icon::from_file_data;
-use iced::{window, Size};
+use iced::{window, Size, Theme};
 
 fn main() -> iced::Result {
     dotenv::dotenv().ok();
@@ -37,5 +37,6 @@ fn main() -> iced::Result {
         .window(window_settings)
         .antialiasing(true)
         .exit_on_close_request(true)
+        .theme(Theme::Ferra)
         .run()
 }
