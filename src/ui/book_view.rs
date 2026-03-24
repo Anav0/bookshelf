@@ -258,8 +258,9 @@ fn view_book_list(app: &BookshelfApp) -> Element<Message> {
     column![
         row![
             text(search_status).size(24),
-            // app.author_dropdown.view(),
-            app.author_dropdown.overlay_view(),
+            app.author_dropdown
+                .view()
+                .map(Message::BookViewAuthorSelected),
             iced::widget::space().width(iced::Length::Fill),
             add_button
         ]
@@ -341,11 +342,7 @@ fn create_search_status_label(app: &BookshelfApp) -> String {
             if filtered.is_empty() {
                 format!("No books found matching '{}'", app.search_term_displayed)
             } else {
-                format!(
-                    "Found {} books matching '{}'",
-                    filtered.len(),
-                    app.search_term_displayed
-                )
+                format!("Found {} books", filtered.len())
             }
         } else {
             "Search results".to_string()
@@ -385,7 +382,9 @@ fn view_book_form(app: &BookshelfApp) -> Element<Message> {
             .on_input(Message::BookFinishedDateChanged)
             .padding(10),
         text("Author:").size(16),
-        app.author_dropdown.overlay_view(),
+        app.author_dropdown
+            .view()
+            .map(Message::BookViewAuthorSelected),
         row![
             button("Save")
                 .on_press(Message::SaveBook)

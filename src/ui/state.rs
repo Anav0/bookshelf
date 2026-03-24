@@ -1,5 +1,6 @@
 use crate::db;
 use crate::models::{AuthorModel, BookWithAuthor};
+use crate::ui::components::searchable_dropdown;
 use crate::ui::components::searchable_dropdown::SearchableDropdown;
 use crate::ui::{
     author_view, book_view, sort_books, BookFilter, Message, Mode, SortDirection, SortField, Tab,
@@ -30,8 +31,7 @@ pub struct BookshelfApp {
     pub new_author_model: Option<AuthorModel>,
 
     // Book view dropdowns
-    //Filter by author's name
-    pub author_dropdown: SearchableDropdown<String>,
+    pub author_dropdown: SearchableDropdown<AuthorModel>,
 
     // Author state
     pub authors: Vec<AuthorModel>,
@@ -66,14 +66,15 @@ impl BookshelfApp {
             author_name: String::new(),
             author_books: Vec::new(),
             error: None,
-            author_dropdown: SearchableDropdown::new(
-                Vec::new(),
-                Box::new(|name| Message::BookFilterChanged(BookFilter::Author(name))),
-                None,
-            ),
+            author_dropdown: SearchableDropdown::new(Vec::new(), "Select author", |author| {
+                Message::BookFilterChanged(BookFilter::Author(author.Name.unwrap()))
+            }),
         };
 
-        (state, iced::Task::perform(async { () }, |_| Message::Initialize))
+        (
+            state,
+            iced::Task::perform(async { () }, |_| Message::Initialize),
+        )
     }
 
     pub fn update(&mut self, message: Message) -> iced::Task<Message> {
@@ -266,9 +267,19 @@ impl BookshelfApp {
                 self.error = Some(error);
                 iced::Task::none()
             }
-            Message::SearchableDropdownMessages(dropdown_message) => {
-                self.author_dropdown.update(dropdown_message)
-            }
+            Message::BookViewAuthorSelected(msg) => match msg {
+                searchable_dropdown::Message::Selected(author) => {
+                    let name = author.Name.clone().unwrap_or(String::from("Unknown \
+                    author"));
+                    self.author_dropdown.set_selected(author);
+
+                    book_view::handle_book_filter_changed(self, BookFilter::Author(name))
+                }
+                searchable_dropdown::Message::Cleared => {
+                    self.author_dropdown.clear();
+                   book_view::handle_load_books(self)
+                }
+            },
             Message::BookFilterChanged(book_filter) => {
                 book_view::handle_book_filter_changed(self, book_filter)
             }

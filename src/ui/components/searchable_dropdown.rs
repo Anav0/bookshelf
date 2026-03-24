@@ -1,124 +1,65 @@
-use std::fmt::Display;
 // src/ui/components/searchable_dropdown.rs
-use crate::models::AuthorModel;
-use crate::ui::{BookFilter, Message as GlobalMessage};
-use iced::border::width;
-use iced::widget::{button, column, container, pick_list, row, scrollable, text, text_input};
-use iced::{padding, Element, Length, Task};
+use crate::ui::Message as GlobalMessage;
+use iced::widget::{button, combo_box, container, row, value};
+use iced::{Element, Length, Task};
+use std::fmt::Display;
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
-pub enum Message {
-    Toggle,
-    Search(String),
-    Select(Option<usize>),
+pub enum Message<T: Clone> {
+    Selected(T),
+    Cleared,
 }
 
-pub struct SearchableDropdown<T: PartialEq<String> + PartialEq<T> + Display + Clone> {
-    pub options: Vec<T>,
-    selected: Option<usize>,
-    search_term: String,
-    is_open: bool,
-    on_change_msg: Box<dyn Fn(T) -> GlobalMessage>,
-    default_placeholder: String,
+pub struct SearchableDropdown<T: Display + Clone + 'static> {
+    state: combo_box::State<T>,
+    selected: Option<T>,
+    on_select: Arc<dyn Fn(T) -> GlobalMessage>,
+
+    original_placeholder: String,
+    placeholder: String,
 }
 
-impl<T: AsRef<str> + Clone + PartialEq<String> + PartialEq<T> + Display> SearchableDropdown<T> {
+impl<T: Display + Clone + 'static> SearchableDropdown<T> {
     pub fn new(
         options: Vec<T>,
-        on_change_msg: Box<dyn Fn(T) -> GlobalMessage>,
-        selected: Option<usize>,
+        placeholder: impl Into<String>,
+        on_select: impl Fn(T) -> GlobalMessage + 'static,
     ) -> Self {
+        let original_placeholder = placeholder.into().clone();
+        let placeholder = original_placeholder.clone();
         Self {
-            options,
-            selected,
-            search_term: String::new(),
-            is_open: false,
-            on_change_msg,
-            default_placeholder: String::from("Select"),
+            state: combo_box::State::new(options),
+            selected: None,
+            placeholder,
+            original_placeholder,
+            on_select: Arc::new(on_select),
         }
     }
 
-    pub fn toggle(&mut self) {
-        self.is_open = !self.is_open;
-        if !self.is_open {
-            self.search_term = String::new(); // Clear search when closing
-        }
+    pub fn set_selected(&mut self, selected: T) {
+        self.selected = Some(selected.clone());
+        self.placeholder = format!("{}", selected);
     }
 
-    pub fn close(&mut self) {
-        self.is_open = false;
-        self.search_term = String::new();
+    pub fn clear(&mut self) {
+        self.selected = None;
+        self.placeholder = self.original_placeholder.clone();
     }
 
-    pub fn search(&mut self, term: String) {
-        self.search_term = term;
+    pub fn view(&self) -> Element<'_, Message<T>> {
+        row![
+            combo_box(
+                &self.state,
+                &self.placeholder,
+                self.selected.as_ref(),
+                Message::Selected,
+            ),
+            button("clear")
+                .on_press(Message::Cleared)
+                .style(button::primary)
+        ]
+        .spacing(8)
+        .into()
     }
-
-    pub fn select(&mut self, index: usize) {
-        self.selected = Some(index);
-        self.close();
-    }
-
-    pub fn update(&mut self, msg: Message) -> Task<GlobalMessage> {
-        match msg {
-            Message::Toggle => {
-                self.toggle();
-                iced::Task::none()
-            }
-            Message::Select(index) => match index {
-                None => iced::Task::none(),
-                Some(idx) => {
-                    self.select(idx);
-                    let option = self.options.get(idx).unwrap();
-                    iced::Task::done((self.on_change_msg)(option.clone()))
-                }
-            },
-            Message::Search(text) => {
-                self.search(text);
-                iced::Task::none()
-            }
-        }
-    }
-
-    pub fn overlay_view(&self) -> Element<'_, GlobalMessage> {
-        let selected_option = self.selected.and_then(|idx| self.options.get(idx));
-
-        let placeholder = self.get_selected_option();
-        let options = self.get_filtered_options();
-
-
-        // let _search_input = text_input("Search author...", &self.search_term)
-        //     .on_input(|text| GlobalMessage::SearchableDropdownMessages(Message::Search(text)))
-        //     .padding(10)
-        //     .width(Length::Fill);
-
-        pick_list(options, selected_option, |x| GlobalMessage::None)
-            .placeholder(placeholder)
-            .into()
-    }
-
-    pub fn get_filtered_options(&self) -> Vec<T> {
-        if self.search_term.is_empty() {
-            self.options.clone()
-        } else {
-            self.options
-                .iter()
-                .filter(|option| {
-                    option
-                        .as_ref()
-                        .to_lowercase()
-                        .contains(&self.search_term.to_lowercase())
-                })
-                .cloned()
-                .collect::<Vec<_>>()
-        }
-    }
-
-    pub fn get_selected_option(&self) -> &str {
-        self.selected
-            .and_then(|idx| self.options.get(idx))
-            .map(|s| s.as_ref())
-            .unwrap_or(&self.default_placeholder)
-    }
-
 }

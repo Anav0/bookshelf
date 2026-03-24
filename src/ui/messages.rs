@@ -39,8 +39,7 @@ pub enum Message {
     CancelDeleteBook,
     BookDeleted(Result<usize, String>),
     BookFilterChanged(BookFilter),
-
-    SearchableDropdownMessages(searchable_dropdown::Message),
+    BookViewAuthorSelected(searchable_dropdown::Message<AuthorModel>),
 
     // Author Messages
     LoadAuthors,

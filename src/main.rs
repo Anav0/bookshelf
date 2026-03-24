@@ -32,6 +32,7 @@ fn main() -> iced::Result {
         platform_specific: Default::default(),
         exit_on_close_request: false,
     };
+    
     iced::application(BookshelfApp::new, BookshelfApp::update, BookshelfApp::view)
         .title("Bookshelf")
         .window(window_settings)

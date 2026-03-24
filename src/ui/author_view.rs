@@ -58,14 +58,12 @@ pub fn handle_authors_loaded(
     match result {
         Ok(authors) => {
             app.authors = authors.clone();
-            app.author_dropdown = SearchableDropdown::new(
-                authors
-                    .into_iter()
-                    .filter_map(|author| author.Name)
-                    .collect(),
-                Box::new(|name| Message::BookFilterChanged(BookFilter::Author(name))),
-                None,
-            );
+            app.author_dropdown =
+                SearchableDropdown::new(authors.into_iter().collect(), "Select author", |author| {
+                    Message::BookFilterChanged(BookFilter::Author(
+                        author.Name.unwrap_or_else(|| "Unknown author".to_string()),
+                    ))
+                });
         }
         Err(e) => {
             app.error = Some(e);
