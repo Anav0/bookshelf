@@ -7,6 +7,15 @@ use chrono::{Local, NaiveDateTime};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
 use iced::{Element, Length, Task};
 
+pub fn view(app: &BookshelfApp) -> Element<Message> {
+    match &app.mode {
+        Mode::View => view_book_list(app),
+        Mode::Add | Mode::Edit => view_book_form(app),
+        Mode::ConfirmDelete(id, title) => view_delete_confirmation(app, *id, title),
+        Mode::ViewDetails => view_book_list(app),
+    }
+}
+
 // Handler functions for book-related messages
 pub fn handle_load_books(_: &mut BookshelfApp) -> iced::Task<Message> {
     iced::Task::perform(
@@ -227,14 +236,7 @@ pub fn handle_book_deleted(
 }
 
 // View functions for books
-pub fn view(app: &BookshelfApp) -> Element<Message> {
-    match &app.mode {
-        Mode::View => view_book_list(app),
-        Mode::Add | Mode::Edit => view_book_form(app),
-        Mode::ConfirmDelete(id, title) => view_delete_confirmation(app, *id, title),
-        Mode::ViewDetails => view_book_list(app),
-    }
-}
+
 
 fn view_book_list(app: &BookshelfApp) -> Element<Message> {
     let add_button = button("Add New Book")
