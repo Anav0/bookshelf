@@ -1,8 +1,7 @@
-// src/ui/book_view.rs
+use std::collections::BTreeSet;
 use crate::db;
 use crate::models::{BookModel, BookWithAuthor, NewBook, ID};
-use crate::ui::components::searchable_dropdown;
-use crate::ui::{sort_books, BookFilter, BookshelfApp, Message, Mode, LIST_MAX_WIDTH};
+use crate::ui::{sort_books, BookFilter, BookshelfApp, Message, Mode, DATE_FORMAT, LIST_MAX_WIDTH};
 use chrono::{Local, NaiveDateTime};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
 use iced::{Element, Length, Task};
@@ -93,7 +92,7 @@ pub fn handle_book_finished_date_changed(
 }
 
 pub fn handle_save_book(app: &mut BookshelfApp) -> iced::Task<Message> {
-    let price = if app.book_price.is_empty() {
+    let other_price = if app.book_price.is_empty() {
         None
     } else {
         match app.book_price.parse::<f32>() {
@@ -131,7 +130,7 @@ pub fn handle_save_book(app: &mut BookshelfApp) -> iced::Task<Message> {
 
     let new_book = NewBook {
         title: app.book_title.clone(),
-        price,
+        price: other_price,
         bought: bought_date,
         finished: finished_date,
         added: Some(added_date),
@@ -209,6 +208,7 @@ pub fn handle_books_loaded(
             app.books = books;
             app.filtered_books = None; // Reset filtered books when loading all books
             app.is_filter_applied = false;
+            load_bought_options(app);
 
             // Apply sorting directly to the loaded books
             sort_books(&mut app.books, &app.sort_field, &app.sort_direction);
@@ -218,6 +218,23 @@ pub fn handle_books_loaded(
         }
     }
     iced::Task::none()
+}
+
+pub fn load_bought_options(app: &mut BookshelfApp) {
+    app.bought_options = app
+        .books
+        .iter()
+        .filter(|b| b.book.bought.is_some())
+        .map(|b| {
+            b.book
+                .bought
+                .unwrap_or(NaiveDateTime::MIN)
+                .format(DATE_FORMAT)
+                .to_string()
+        })
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
 }
 
 pub fn handle_book_deleted(
@@ -234,9 +251,6 @@ pub fn handle_book_deleted(
         }
     }
 }
-
-// View functions for books
-
 
 fn view_book_list(app: &BookshelfApp) -> Element<Message> {
     let add_button = button("Add New Book")

@@ -1,10 +1,13 @@
 use crate::db;
 use crate::models::{AuthorModel, BookWithAuthor};
+use crate::schema::Books::{bought, finished};
 use crate::ui::components::searchable_dropdown;
 use crate::ui::components::searchable_dropdown::SearchableDropdown;
+use crate::ui::formats::BoughtFormat;
 use crate::ui::{
     author_view, book_view, sort_books, BookFilter, Message, Mode, SortDirection, SortField, Tab,
 };
+use chrono::NaiveDate;
 
 pub struct BookshelfApp {
     // State
@@ -29,8 +32,9 @@ pub struct BookshelfApp {
     pub book_bought_date: String,
     pub book_finished_date: String,
     pub new_author_model: Option<AuthorModel>,
+    pub bought_options: Vec<BoughtFormat>,
+    pub bought_options_selected: Option<BoughtFormat>,
 
-    // Book view dropdowns
     pub author_dropdown: SearchableDropdown<AuthorModel>,
 
     // Author state
@@ -69,8 +73,9 @@ impl BookshelfApp {
             author_dropdown: SearchableDropdown::new(Vec::new(), "Select author", |author| {
                 Message::BookFilterChanged(BookFilter::Author(author.Name.unwrap()))
             }),
+            bought_options: vec![],
+            bought_options_selected: None,
         };
-
         (
             state,
             iced::Task::perform(async { () }, |_| Message::Initialize),
@@ -269,15 +274,17 @@ impl BookshelfApp {
             }
             Message::BookViewAuthorSelected(msg) => match msg {
                 searchable_dropdown::Message::Selected(author) => {
-                    let name = author.Name.clone().unwrap_or(String::from("Unknown \
-                    author"));
+                    let name = author.Name.clone().unwrap_or(String::from(
+                        "Unknown \
+                    author",
+                    ));
                     self.author_dropdown.set_selected(author);
 
                     book_view::handle_book_filter_changed(self, BookFilter::Author(name))
                 }
                 searchable_dropdown::Message::Cleared => {
                     self.author_dropdown.clear();
-                   book_view::handle_load_books(self)
+                    book_view::handle_load_books(self)
                 }
             },
             Message::BookFilterChanged(book_filter) => {

@@ -5,10 +5,8 @@ mod messages;
 mod state;
 mod utils;
 mod variables;
-
-pub mod components {
-    pub mod searchable_dropdown;
-}
+mod components;
+mod formats;
 
 pub use messages::*;
 pub use state::*;

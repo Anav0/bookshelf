@@ -48,3 +48,5 @@ pub fn sort_books(books: &mut Vec<BookWithAuthor>, field: &SortField, direction:
         }
     });
 }
+
+pub const DATE_FORMAT: &str = "%Y-%m-%d";

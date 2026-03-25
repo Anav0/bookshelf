@@ -1,7 +1,11 @@
 // src/ui/messages.rs (additions for searchable dropdown)
 use crate::models::{AuthorModel, BookModel, BookWithAuthor, ID};
+use crate::schema::Books::{bought, finished};
+use chrono::NaiveDate;
 use crate::ui::components::searchable_dropdown;
 use std::fmt;
+use std::fmt::{Display, Formatter, Write};
+use crate::ui::formats::BoughtFormat;
 
 /// Defines all the possible messages that can be sent in the application
 #[derive(Debug, Clone)]
@@ -71,7 +75,7 @@ pub enum BookFilter {
 #[derive(Debug, Clone)]
 pub enum Mode {
     View,
-    ViewDetails, // Mode for viewing author details
+    ViewDetails,
     Add,
     Edit,
     ConfirmDelete(ID, String), // ID and name of item to delete
